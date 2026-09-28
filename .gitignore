@@ -1,0 +1,29 @@
+
+data/
+
+# Internal handoff notes — the repo is public.
+HANDOFF.md
+
+# Secrets and local environment
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+
+# Terraform — state and variables carry account details and secrets
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
