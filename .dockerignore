@@ -1,0 +1,15 @@
+.*
+*.env
+*.pem
+*.key
+
+data/
+infra/
+docs/
+*.md
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+**/__pycache__
+**/*.py[cod]
