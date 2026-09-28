@@ -65,3 +65,8 @@ async def test_oversized_body_is_refused(live_server):
     headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
     status, _ = http(f"{live_server}/mcp", "POST", b"x" * (MAX_REQUEST_BODY_BYTES + 1), headers)
     assert status == 413
+
+
+async def test_server_identifies_as_stratinet(settings):
+    async with Client(build_server(settings)) as client:
+        assert client.server_info.name == "stratinet"
