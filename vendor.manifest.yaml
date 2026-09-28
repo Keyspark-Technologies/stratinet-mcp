@@ -1,7 +1,6 @@
-# Every file copied from upstream. Copy from a commit, never a working tree:
-#   git -C <upstream> show <sha>:<source> > <dest>
-# CI fails when a vendored file no longer matches upstream at its recorded sha.
+# Files copied from upstream. Copy from a commit, never a working tree.
+# sha256 is the hash of the file exactly as committed here.
 files: []
-#  - dest: engines/cve/version_match.py
-#    source: services/cve-remediation/app/services/intel/version_match.py
-#    sha: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+#  - dest: engines/cve/<file>.py
+#    sha256: <sha256 of the file>
+#    upstream_commit: <commit>
