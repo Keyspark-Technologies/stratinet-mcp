@@ -3,6 +3,7 @@ data/
 
 # Internal handoff notes — the repo is public.
 HANDOFF.md
+RUNBOOK.md
 
 # Secrets and local environment
 .env
@@ -16,6 +17,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 dist/
 build/
 *.egg-info/
@@ -27,3 +29,8 @@ build/
 *.tfvars
 !*.tfvars.example
 crash.log
+
+# Internal team briefs and context. Never commit.
+.context/
+
+.DS_Store
