@@ -30,7 +30,4 @@ build/
 !*.tfvars.example
 crash.log
 
-# Internal team briefs and context. Never commit.
-.context/
-
 .DS_Store

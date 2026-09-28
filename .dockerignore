@@ -1,25 +1,15 @@
-.env
-.env.*
+.*
 *.env
 *.pem
 *.key
 
-.git
-.github
 data/
 infra/
 docs/
-HANDOFF.md
+*.md
 *.tfstate
 *.tfstate.*
 *.tfvars
 
 **/__pycache__
 **/*.py[cod]
-.venv/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.context/
-RUNBOOK.md
-.DS_Store
