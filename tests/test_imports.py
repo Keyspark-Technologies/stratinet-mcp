@@ -22,14 +22,38 @@ def imports(path):
             yield node.lineno, node.level, node.module or "", names
 
 
+def defined_in(init, name):
+    for node in ast.parse(init.read_text(encoding="utf-8")).body:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and node.name == name
+        ):
+            return True
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(isinstance(t, ast.Name) and t.id == name for t in targets):
+                return True
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if any((a.asname or a.name.split(".")[0]) == name for a in node.names):
+                return True
+    return False
+
+
 def resolves(path, level, module, names):
     base = path.parent
     for _ in range(level - 1):
         base = base.parent
-    target = base.joinpath(*module.split(".")) if module else base
-    if target.with_suffix(".py").is_file() or (target / "__init__.py").is_file():
-        return True
-    return not module and all((base / f"{n}.py").is_file() for n in names)
+    if module:
+        target = base.joinpath(*module.split("."))
+        return target.with_suffix(".py").is_file() or (target / "__init__.py").is_file()
+    init = base / "__init__.py"
+    return all(
+        n == "*"
+        or (base / f"{n}.py").is_file()
+        or (base / n / "__init__.py").is_file()
+        or (init.is_file() and defined_in(init, n))
+        for n in names
+    )
 
 
 def test_there_is_code_to_check():
@@ -48,7 +72,7 @@ def test_every_absolute_import_is_allowed():
 
 def test_every_relative_import_resolves_inside_the_repo():
     found = [
-        f"{path.relative_to(ROOT)}:{line} imports {'.' * level}{module}"
+        f"{path.relative_to(ROOT)}:{line} imports {'.' * level}{module} {', '.join(names)}"
         for path in sources()
         for line, level, module, names in imports(path)
         if level > 0 and not resolves(path, level, module, names)
