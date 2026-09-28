@@ -1,5 +1,7 @@
 import json
+import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import pytest
@@ -61,10 +63,24 @@ async def test_unknown_host_is_refused(live_server):
     assert status == 421
 
 
+def status_of_raw_request(base_url, request):
+    url = urllib.parse.urlsplit(base_url)
+    with socket.create_connection((url.hostname, url.port), timeout=10) as sock:
+        sock.sendall(request)
+        status_line = sock.makefile("rb").readline()
+    return int(status_line.split()[1])
+
+
 async def test_oversized_body_is_refused(live_server):
-    headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
-    status, _ = http(f"{live_server}/mcp", "POST", b"x" * (MAX_REQUEST_BODY_BYTES + 1), headers)
-    assert status == 413
+    host = urllib.parse.urlsplit(live_server).netloc
+    request = (
+        f"POST /mcp HTTP/1.1\r\n"
+        f"Host: {host}\r\n"
+        f"Content-Type: application/json\r\n"
+        f"Accept: application/json, text/event-stream\r\n"
+        f"Content-Length: {MAX_REQUEST_BODY_BYTES + 1}\r\n\r\n"
+    ).encode()
+    assert status_of_raw_request(live_server, request) == 413
 
 
 async def test_server_identifies_as_stratinet(settings):
