@@ -1,5 +1,6 @@
 
 data/
+*.sql.gz
 
 # Internal handoff notes — the repo is public.
 HANDOFF.md
@@ -38,3 +39,6 @@ tests/test_redact.py
 tests/test_safety.py
 tests/test_startup_data.py
 tests/fixtures/bundle/
+tests/test_applicability.py
+tests/test_corpus_query.py
+tests/test_validate.py
