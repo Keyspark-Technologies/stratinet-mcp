@@ -31,3 +31,10 @@ build/
 crash.log
 
 .DS_Store
+
+tests/test_data.py
+tests/test_errors.py
+tests/test_redact.py
+tests/test_safety.py
+tests/test_startup_data.py
+tests/fixtures/bundle/

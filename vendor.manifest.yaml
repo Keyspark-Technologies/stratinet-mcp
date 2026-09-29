@@ -1,9 +1,4 @@
-# Files copied from upstream. Copy from a commit, never a working tree.
-# sha256 is the hash of the file exactly as committed here.
 files:
   - dest: engines/cve/rule_loader.py
     sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
-#  - dest: engines/cve/<file>.py
-#    sha256: <sha256 of the file>
-#    upstream_commit: <commit>

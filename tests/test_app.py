@@ -105,6 +105,6 @@ async def test_oversized_body_is_refused(live_server):
     assert status_of_raw_request(live_server, request) == 413
 
 
-async def test_server_identifies_as_stratinet(settings):
+async def test_server_identifies_as_mcp_server(settings):
     async with Client(build_server(settings)) as client:
-        assert client.server_info.name == "stratinet"
+        assert client.server_info.name == "mcp-server"

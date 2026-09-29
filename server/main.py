@@ -20,7 +20,7 @@ TOOL_MODULES = (ping,)
 
 
 def build_server(settings: Settings) -> StratinetServer:
-    mcp = StratinetServer("stratinet", log_level=settings.log_level)
+    mcp = StratinetServer("mcp-server", log_level=settings.log_level)
     for module in TOOL_MODULES:
         module.register(mcp)
 
