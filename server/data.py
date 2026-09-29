@@ -28,10 +28,10 @@ def rules_hash(root: Path) -> str:
     ]
     if not files:
         raise FileNotFoundError("no data files")
-    lines = sorted(
+    lines = [
         f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(root).as_posix()}\n"
-        for p in files
-    )
+        for p in sorted(files, key=lambda p: p.relative_to(root).as_posix())
+    ]
     return "sha256:" + hashlib.sha256("".join(lines).encode()).hexdigest()
 
 
