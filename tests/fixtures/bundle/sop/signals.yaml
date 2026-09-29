@@ -1,0 +1,3 @@
+check-example:
+  example-healthy:
+    means: The example reads healthy.

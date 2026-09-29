@@ -1,0 +1,5 @@
+vendor_commands:
+- capability: check-example
+  vendor: cisco_ios
+  command: show example
+  params: []

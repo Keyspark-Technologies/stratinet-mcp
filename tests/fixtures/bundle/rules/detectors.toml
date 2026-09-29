@@ -1,0 +1,13 @@
+[features.example_feature]
+label = "Example feature"
+absence_means = "clear"
+
+[features.example_feature.detectors]
+arista_eos = "(?m)^example feature on$"
+
+[features.example_feature.fixtures]
+must_match = ["example feature on"]
+must_not_match = []
+
+[cves."CVE-2000-0001"]
+features = ["example_feature"]

@@ -1,0 +1,4 @@
+capabilities:
+- key: check-example
+  kind: check
+  description: Show an example

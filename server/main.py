@@ -2,13 +2,13 @@ import logging
 import sys
 
 import uvicorn
-from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from server import startup
+from server.app import StratinetServer
 from server.settings import Settings, SettingsError
 from server.tools import ping
 
@@ -19,8 +19,8 @@ MAX_REQUEST_BODY_BYTES = 1024 * 1024
 TOOL_MODULES = (ping,)
 
 
-def build_server(settings: Settings) -> MCPServer:
-    mcp = MCPServer("stratinet", log_level=settings.log_level)
+def build_server(settings: Settings) -> StratinetServer:
+    mcp = StratinetServer("stratinet", log_level=settings.log_level)
     for module in TOOL_MODULES:
         module.register(mcp)
 
@@ -31,7 +31,7 @@ def build_server(settings: Settings) -> MCPServer:
     return mcp
 
 
-def build_app(settings: Settings, mcp: MCPServer | None = None) -> Starlette:
+def build_app(settings: Settings, mcp: StratinetServer | None = None) -> Starlette:
     return (mcp or build_server(settings)).streamable_http_app(
         stateless_http=True,
         json_response=True,

@@ -17,7 +17,8 @@ CMD ["sh", "-c", "ruff check . && ruff format --check . && pytest"]
 FROM python:3.12-slim-bookworm AS runtime
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    DATA_DIR=/bundle
 RUN useradd --system --no-create-home --uid 10001 app
 COPY --from=deps /opt/venv /opt/venv
 WORKDIR /app

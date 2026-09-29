@@ -1,0 +1,4 @@
+issue:
+  key: ospf-neighbor-down
+  label: Example issue
+  verified: false

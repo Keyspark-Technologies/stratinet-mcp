@@ -5,6 +5,7 @@ description = "Public MCP server: advisory exposure and network troubleshooting.
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "mcp==2.2.0",
+    "pyyaml",
     "starlette",
     "uvicorn",
 ]
@@ -26,6 +27,7 @@ addopts = "-ra --strict-markers"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+extend-exclude = ["engines/cve/rule_loader.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S"]
