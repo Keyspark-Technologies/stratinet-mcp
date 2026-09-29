@@ -2,3 +2,13 @@ files:
   - dest: engines/cve/rule_loader.py
     sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+  - dest: engines/cve/version_match.py
+    sha256: 9b497c885b414c39952b1262ee33137aa166540fd730ab3cefd23d07b070a43f
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: e287b56b61b7a8f40c75e793e67fdbf67f1bd226fcf877f45c30753eccf5eb1b
+    local_edit: comment only (line 801) -- internal site name replaced; the repo is public
+  - dest: engines/cve/cve_authority.py
+    sha256: dcacc4bb12b690160575f0de2c5d84007e6befccc7f4489daf6543148103fcc5
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
+    local_edit: comment only (line 21) -- internal device name replaced; the repo is public
