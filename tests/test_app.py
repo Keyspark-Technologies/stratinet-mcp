@@ -29,22 +29,44 @@ async def test_client_lists_and_calls_ping(live_server):
         result = await client.call_tool("ping", {})
 
     assert [t.name for t in tools.tools] == ["ping"]
+    assert tools.tools[0].input_schema["additionalProperties"] is False
     assert not result.is_error
-    assert result.content[0].text == "pong"
+    assert result.structured_content == {"result": "pong"}
+    assert json.loads(result.content[0].text) == result.structured_content
 
 
 async def test_crash_does_not_reach_the_caller(settings):
     mcp = build_server(settings)
 
-    @mcp.tool()
-    def boom() -> str:
+    def boom(arguments):
         raise RuntimeError("internal detail that must not reach the caller")
+
+    mcp.add_public_tool("boom", "Fails.", {"type": "object", "additionalProperties": False}, boom)
 
     async with Client(mcp) as client:
         result = await client.call_tool("boom", {})
 
     assert result.is_error
-    assert result.content[0].text == "Error executing tool boom"
+    assert result.structured_content == {
+        "error": {"code": "internal_error", "message": "The tool could not complete this request."}
+    }
+    assert "internal detail" not in result.content[0].text
+
+
+async def test_an_answer_carrying_an_internal_marker_is_withheld(settings):
+    mcp = build_server(settings)
+
+    def leaky(arguments):
+        return {"detail": "Traceback (most recent call last): /app/server.py"}
+
+    mcp.add_public_tool("leaky", "Leaks.", {"type": "object", "additionalProperties": False}, leaky)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool("leaky", {})
+
+    assert result.is_error
+    assert result.structured_content["error"]["code"] == "internal_error"
+    assert "Traceback" not in result.content[0].text
 
 
 async def test_healthz(live_server):
@@ -83,6 +105,6 @@ async def test_oversized_body_is_refused(live_server):
     assert status_of_raw_request(live_server, request) == 413
 
 
-async def test_server_identifies_as_stratinet(settings):
+async def test_server_identifies_as_mcp_server(settings):
     async with Client(build_server(settings)) as client:
-        assert client.server_info.name == "stratinet"
+        assert client.server_info.name == "mcp-server"

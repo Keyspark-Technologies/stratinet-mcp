@@ -2,6 +2,8 @@ import pytest
 
 from server import main, startup
 
+DATA_CHECKS = [check for name, check in startup.CHECKS if name != "corpus generation"]
+
 
 def test_checks_run_in_the_required_order():
     assert [name for name, _ in startup.CHECKS] == [
@@ -13,22 +15,24 @@ def test_checks_run_in_the_required_order():
     ]
 
 
-def test_skeleton_checks_pass():
-    startup.run()
+@pytest.mark.parametrize("check", DATA_CHECKS)
+def test_each_data_check_fails_on_missing_data(check, tmp_path):
+    with pytest.raises((OSError, ValueError)):
+        check(tmp_path)
 
 
-def test_first_failure_stops_the_rest():
+def test_first_failure_stops_the_rest(tmp_path):
     ran = []
 
     def ok(name):
-        return lambda: ran.append(name)
+        return lambda root: ran.append(name)
 
-    def fail():
+    def fail(root):
         raise FileNotFoundError("/internal/path/detectors.toml")
 
     checks = [("a", ok("a")), ("b", fail), ("c", ok("c"))]
     with pytest.raises(startup.StartupError) as err:
-        startup.run(checks)
+        startup.run(checks, root=tmp_path)
 
     assert ran == ["a"]
     assert str(err.value) == "startup check failed: b"
@@ -36,7 +40,7 @@ def test_first_failure_stops_the_rest():
 
 
 def test_main_exits_before_serving_when_a_check_fails(monkeypatch):
-    def fail():
+    def fail(root):
         raise RuntimeError("no current generation")
 
     monkeypatch.setattr(startup, "CHECKS", (("corpus generation", fail),))

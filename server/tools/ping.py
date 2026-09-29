@@ -1,7 +1,16 @@
-from mcp.server.mcpserver import MCPServer
+from typing import Any
+
+from common.validate import check_fields
+
+SCHEMA = {"type": "object", "properties": {}, "additionalProperties": False}
+
+EXAMPLES = {"ping": [{}]}
 
 
-def register(mcp: MCPServer) -> None:
-    @mcp.tool(description="Returns 'pong'. Confirms the server is reachable.")
-    def ping() -> str:
-        return "pong"
+def ping(arguments: dict[str, Any]) -> dict[str, Any]:
+    check_fields(arguments)
+    return {"result": "pong"}
+
+
+def register(mcp) -> None:
+    mcp.add_public_tool("ping", "Returns 'pong'. Confirms the server is reachable.", SCHEMA, ping)

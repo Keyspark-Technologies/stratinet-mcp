@@ -1,12 +1,21 @@
 import socket
 import threading
 import time
+from pathlib import Path
 
 import pytest
 import uvicorn
 
 from server.main import build_app
 from server.settings import Settings
+
+FIXTURE_DATA = Path(__file__).parent / "fixtures" / "bundle"
+
+
+@pytest.fixture(autouse=True)
+def fixture_data_dir(monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(FIXTURE_DATA))
+    return FIXTURE_DATA
 
 
 @pytest.fixture
