@@ -42,3 +42,4 @@ tests/fixtures/bundle/
 tests/test_applicability.py
 tests/test_corpus_query.py
 tests/test_validate.py
+tests/test_triage_local.py
