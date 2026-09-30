@@ -44,6 +44,7 @@ class AdvisoryMatch:
     cve_id: str
     advisory_id: str
     substantiated: bool = True
+    version_undecidable: bool = False
     affected_ranges: list = field(default_factory=list)
     fixed_versions: list = field(default_factory=list)
     affected_prose: list = field(default_factory=list)
@@ -63,6 +64,7 @@ class LookupResult:
     version: str
     version_comparable: bool
     advisories: list = field(default_factory=list)
+    cves_seen: tuple = ()
 
 
 def _clean_version(version) -> str:
@@ -111,15 +113,18 @@ def advisories_for_version(
     result = LookupResult(
         vendor=vendor, version=os_version, version_comparable=_comparable(os_version)
     )
+    plat, products = _VENDORS[vendor]
+    wanted = set(products)
+    all_rows = corpus_query.product_rows(products) if rows is None else rows
+    rows = [r for r in all_rows if (r.get("product_clean") or "") in wanted]
+    result.cves_seen = tuple(
+        sorted({(r.get("cve_id") or "").strip() for r in rows if _has_quote(r)} - {""})
+    )
     if not result.version_comparable:
         return result
     authority = authority or authority_path()
     if not os.path.isfile(authority):
         raise AuthorityUnavailable("cve authority data unavailable")
-    plat, products = _VENDORS[vendor]
-    wanted = set(products)
-    all_rows = corpus_query.product_rows(products) if rows is None else rows
-    rows = [r for r in all_rows if (r.get("product_clean") or "") in wanted]
 
     merged: dict = {}
     blind: dict = {}
@@ -229,13 +234,6 @@ def advisories_for_version(
     return result
 
 
-def _version_affected(os_version: str, ranges: list) -> bool:
-    hit = matches_any_range(os_version, ranges)
-    if hit is not None:
-        return hit
-    return True
-
-
 def _applicable(
     advisories: list,
     platform: str,
@@ -280,6 +278,11 @@ def _applicable(
             a.substantiated = False
             kept.append(a)
             continue
-        if _version_affected(os_version, a.affected_ranges):
+        hit = matches_any_range(os_version, a.affected_ranges)
+        if hit is None:
+            a.substantiated = False
+            a.version_undecidable = True
+            kept.append(a)
+        elif hit:
             kept.append(a)
     return kept

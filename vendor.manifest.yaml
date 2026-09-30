@@ -44,3 +44,11 @@ files:
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 35ccba901f5288b4e35595a56bdade2c71326837b104098aac4d510c5f8a9833
     local_edit: "comments only -- internal component names removed; the repo is public; comments and docstrings removed"
+  - dest: engines/cve/features.py
+    sha256: e8bc73f3a747c2444b564bc4faaead46976da94f6970d8ff484b29c60251390a
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+  - dest: engines/cve/grounding.py
+    sha256: b65880cbe21b882781f5c545c18e20f2c92772c43dccd3bbcb3f369aead494d2
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 61ab234004f7afa3b0f0b0d579a7d7249aa1a177c68a1b91b286b1bf2d5168bd
+    local_edit: imports and rules path only (lines 22, 23, 42; os and Path imported for line 42)
