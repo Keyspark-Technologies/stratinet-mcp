@@ -12,3 +12,33 @@ files:
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
     local_edit: comment only (line 21) -- internal device name replaced; the repo is public
+  - dest: engines/triage/extract.py
+    sha256: 6bbd41f6a42de0d16b68b69854e16bad7ced31880f1fdb8f9b52ff764e125492
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: c792df1e71fcd7fc5d7fd07f7a552d028404721f803b9bfbe63a1f098ec3104b
+    local_edit: "model layer removed (extract_with_model and the model constant); extract_layered is deterministic only; internal device names replaced in comments"
+  - dest: engines/triage/findings.py
+    sha256: f696d2c58f950efb812cfe43423e5535a299d0ecdc5a41facb1a1ddb6b3d86db
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 709e8589e170aad0039e369ec6a93a2f884ce34f8e5b8969d41df3145bf92939
+    local_edit: "comment only -- internal device name replaced; the repo is public"
+  - dest: engines/triage/select.py
+    sha256: 676ca802073dc53169fc815a2985f435359a5ce828d9d96e4620d42563dd0c50
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 19583df78109d46be5772fcdc17d9b44db69e6b9eaf24b9fd88dc2adb2cf79d7
+    local_edit: "SOP path read from server.data_dir()"
+  - dest: engines/triage/signals.py
+    sha256: 3b341a76da40d5c559a01c14d7be231abee5427d586ef0c8c0bf675b884738bf
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 0cba7bec829f2d3332c9686af39e52e7afd8a02695d50fc25baa30f65b3c1c41
+    local_edit: "SOP path read from server.data_dir(); comment -- internal device name replaced"
+  - dest: engines/triage/triage.py
+    sha256: cf6cff77e3b08e0b529bae1b6712167b2d48ccffa91a6463ee7991cccf510522
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 956a5f0368e07bfff1418d42b6c2ee2f1a1616c0e67d3483bfb9f66f3fc1d687
+    local_edit: "deterministic only: no alert-rule mapping, config_change, database command lookup, model chooser, model summary or remediations; cannot_determine replaces no_fault_found; _fill inlined; internal names removed from comments"
+  - dest: engines/triage/triage_readonly.py
+    sha256: 5d961db1a41d69be5adc19a9498c872a0efde4063bfcd9a6b93e99476b11950b
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 35ccba901f5288b4e35595a56bdade2c71326837b104098aac4d510c5f8a9833
+    local_edit: "comments only -- internal component names removed; the repo is public"
