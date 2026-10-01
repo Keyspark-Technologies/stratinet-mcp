@@ -5,15 +5,15 @@ files:
     upstream_sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
     local_edit: "comments and docstrings removed"
   - dest: engines/cve/version_match.py
-    sha256: 9b497c885b414c39952b1262ee33137aa166540fd730ab3cefd23d07b070a43f
+    sha256: 72df588c9b68baaa59b3647387ca3b896ae86370538f1c588d1d0ced5f2bc9cd
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: e287b56b61b7a8f40c75e793e67fdbf67f1bd226fcf877f45c30753eccf5eb1b
-    local_edit: comment only (line 801) -- internal site name replaced; the repo is public
+    local_edit: "internal site name replaced in a comment; comments and docstrings removed; unused fixed_from_ranges and ranges_from_prose removed"
   - dest: engines/cve/cve_authority.py
-    sha256: dcacc4bb12b690160575f0de2c5d84007e6befccc7f4489daf6543148103fcc5
+    sha256: d1ba84ce5bb9c5ca293d1e23c1a69b4976becfe613605fd7db8afd9b170caf9e
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
-    local_edit: comment only (line 21) -- internal device name replaced; the repo is public
+    local_edit: "internal device name replaced in a comment; comments and docstrings removed"
   - dest: engines/triage/extract.py
     sha256: fe94cf041235b7a45d2e24de783f6800efb1ecd9622165037f3b05b5b93b135b
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
@@ -44,3 +44,8 @@ files:
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 35ccba901f5288b4e35595a56bdade2c71326837b104098aac4d510c5f8a9833
     local_edit: "comments only -- internal component names removed; the repo is public; comments and docstrings removed"
+  - dest: engines/cve/grounding.py
+    sha256: d16f9c8921402a71b5082ddfe0ee236fda244524e4d6b224733bcd09633e1f59
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 61ab234004f7afa3b0f0b0d579a7d7249aa1a177c68a1b91b286b1bf2d5168bd
+    local_edit: "rules path read from DATA_DIR (os and Path imported); rule_loader import from engines.cve; unused features import and has_rule removed; comments and docstrings removed"

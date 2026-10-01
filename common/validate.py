@@ -48,8 +48,6 @@ def check_enum(value: Any, allowed: Iterable[str], field: str) -> str:
 
 
 def _size(text: Any) -> int:
-    if isinstance(text, bytes):
-        return len(text)
     return len(str(text).encode("utf-8"))
 
 

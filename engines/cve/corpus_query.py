@@ -14,10 +14,10 @@ SELECT a.advisory_id                                   AS advisory_id,
        COALESCE(NULLIF(ap.cve_id, ''), bundle.cve_id)  AS cve_id,
        (COALESCE(ap.cve_id, '') <> '')                 AS cve_specific,
        p.product_clean                                 AS product_clean,
-       ap.affected_range, ap.fixed_version, ap.fixed_version_clean,
-       ap.status, ap.extracted_by,
+       ap.affected_range, ap.fixed_version_clean,
+       ap.status,
        (length(btrim(COALESCE(ap.evidence_quote, ''))) > 0) AS has_quote,
-       a.severity, a.cvss, a.known_exploited, a.attack_type, a.component, a.url, a.published,
+       a.severity, a.cvss, a.known_exploited, a.url, a.published,
        c.epss, c.in_cisa_kev, c.kev_due_date
 FROM kb.advisory_product ap
 JOIN kb.advisory a        ON a.advisory_pk = ap.advisory_pk AND a.valid_to IS NULL
@@ -76,7 +76,7 @@ def _connection(conn) -> Iterator:
 def _plain(v):
     if isinstance(v, decimal.Decimal):
         return float(v)
-    if isinstance(v, (datetime.date, datetime.datetime)):
+    if isinstance(v, datetime.date):
         return v.isoformat()
     return v
 
@@ -88,8 +88,6 @@ def _fetch(conn, sql: str, params: dict | None = None) -> list:
             names = [d[0] for d in cur.description]
             rows = cur.fetchall()
             return [{n: _plain(v) for n, v in zip(names, row, strict=True)} for row in rows]
-    except CorpusUnavailable:
-        raise
     except Exception as e:
         raise CorpusUnavailable("advisory corpus unavailable") from e
 
