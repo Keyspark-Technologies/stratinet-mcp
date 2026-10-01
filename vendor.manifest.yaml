@@ -5,15 +5,15 @@ files:
     upstream_sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
     local_edit: "comments and docstrings removed"
   - dest: engines/cve/version_match.py
-    sha256: 9b497c885b414c39952b1262ee33137aa166540fd730ab3cefd23d07b070a43f
+    sha256: e3279014babdd50f532c39e293a33a63362e3f45168a1461c4789dff54b111fc
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: e287b56b61b7a8f40c75e793e67fdbf67f1bd226fcf877f45c30753eccf5eb1b
-    local_edit: comment only (line 801) -- internal site name replaced; the repo is public
+    local_edit: "internal site name replaced in a comment; comments and docstrings removed"
   - dest: engines/cve/cve_authority.py
-    sha256: dcacc4bb12b690160575f0de2c5d84007e6befccc7f4489daf6543148103fcc5
+    sha256: d1ba84ce5bb9c5ca293d1e23c1a69b4976becfe613605fd7db8afd9b170caf9e
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
-    local_edit: comment only (line 21) -- internal device name replaced; the repo is public
+    local_edit: "internal device name replaced in a comment; comments and docstrings removed"
   - dest: engines/triage/extract.py
     sha256: fe94cf041235b7a45d2e24de783f6800efb1ecd9622165037f3b05b5b93b135b
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
@@ -45,10 +45,12 @@ files:
     upstream_sha256: 35ccba901f5288b4e35595a56bdade2c71326837b104098aac4d510c5f8a9833
     local_edit: "comments only -- internal component names removed; the repo is public; comments and docstrings removed"
   - dest: engines/cve/features.py
-    sha256: e8bc73f3a747c2444b564bc4faaead46976da94f6970d8ff484b29c60251390a
+    sha256: fd24b1917cef509c1ab3827eac3251e389b3406d9c9de1131e18a027d009b5be
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: e8bc73f3a747c2444b564bc4faaead46976da94f6970d8ff484b29c60251390a
+    local_edit: "comments and docstrings removed"
   - dest: engines/cve/grounding.py
-    sha256: b65880cbe21b882781f5c545c18e20f2c92772c43dccd3bbcb3f369aead494d2
+    sha256: 7d63dd099581b0e35c0cef3aa38ade177003a875483e8bcb0cc0e5e84cd9e846
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 61ab234004f7afa3b0f0b0d579a7d7249aa1a177c68a1b91b286b1bf2d5168bd
-    local_edit: imports and rules path only (lines 22, 23, 42; os and Path imported for line 42)
+    local_edit: "imports and rules path only (lines 22, 23, 42; os and Path imported for line 42); comments and docstrings removed"
