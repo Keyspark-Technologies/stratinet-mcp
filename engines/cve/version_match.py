@@ -168,26 +168,6 @@ def matches_any_range(version: str, ranges: list) -> Optional[bool]:
     return False if decided else None
 
 
-def fixed_from_ranges(ranges: list) -> list:
-    out: list = []
-    for r in ranges or []:
-        if not isinstance(r, dict):
-            continue
-        fixed = str(r.get("fixed") or "").strip()
-        if not fixed:
-            continue
-        p = parse_version(fixed)
-        if not p:
-            continue
-        nums, train = p
-        if r.get("fixed_inclusive"):
-            nums = nums[:-1] + (nums[-1] + 1,)
-        v = ".".join(str(n) for n in nums) + (train.upper() if train else "")
-        if v not in out:
-            out.append(v)
-    return out
-
-
 _RP_NOT_AFFECTED = re.compile(r"^\s*not\s*affected\b", re.I)
 
 _RP_PAREN_TAIL = re.compile(r"\s*\([^()]*\)\s*$")
@@ -506,5 +486,3 @@ def analyze_range_prose(texts) -> dict:
     return {"ranges": ranges, "blind": blind}
 
 
-def ranges_from_prose(texts) -> list:
-    return analyze_range_prose(texts)["ranges"]

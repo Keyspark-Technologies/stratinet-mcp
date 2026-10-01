@@ -128,7 +128,7 @@ def _invalid_fact() -> ToolInputError:
     return ToolInputError("invalid_feature_fact", field="feature_facts")
 
 
-def check_feature_facts(feature_facts, vendor: str, features: dict) -> dict:
+def check_feature_facts(feature_facts, vendor: str, features: dict) -> None:
     if not isinstance(feature_facts, dict):
         raise _invalid_fact()
     detector_key = DETECTOR_VENDOR[vendor]
@@ -144,7 +144,6 @@ def check_feature_facts(feature_facts, vendor: str, features: dict) -> dict:
             raise _invalid_fact()
         if value == FACT_HARDENED and not (spec.get("hardened_when") or {}).get(detector_key):
             raise _invalid_fact()
-    return feature_facts
 
 
 def ground_facts(

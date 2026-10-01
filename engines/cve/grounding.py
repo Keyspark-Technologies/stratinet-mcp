@@ -4,7 +4,6 @@ import os
 import re
 from pathlib import Path
 
-from engines.cve.features import canonicalize
 from engines.cve.rule_loader import load_rules
 
 EXPOSED = "EXPOSED"
@@ -13,10 +12,6 @@ NEEDS_REVIEW = "NEEDS_REVIEW"
 INDETERMINATE = "INDETERMINATE"
 
 _FEATURES, _CVE_RULES = load_rules(Path(os.environ.get("DATA_DIR") or "data") / "rules" / "detectors.toml")
-
-
-def has_rule(cve_id: str) -> bool:
-    return (cve_id or "").strip().upper() in _CVE_RULES
 
 
 def _detect(feature_id: str, cfg: str, vendor: str):

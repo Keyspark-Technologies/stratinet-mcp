@@ -47,7 +47,6 @@ class AdvisoryMatch:
     version_undecidable: bool = False
     affected_ranges: list = field(default_factory=list)
     fixed_versions: list = field(default_factory=list)
-    affected_prose: list = field(default_factory=list)
     url: str = ""
     published: str = ""
     severity: str = ""
@@ -73,23 +72,18 @@ def _clean_version(version) -> str:
 
 
 def _comparable(os_version: str) -> bool:
-    if not any(c.isdigit() for c in os_version):
-        return False
     p = parse_version(os_version)
     return p is not None and len(_num(p)) >= 3
 
 
 def _has_quote(r: dict) -> bool:
-    return bool(r.get("has_quote")) or bool((r.get("evidence_quote") or "").strip())
+    return bool(r.get("has_quote"))
 
 
 def _cvss(cve_id: str, row_cvss, authority: str) -> float | None:
     own = cve_authority.cvss_for(cve_id, path=authority)
     if own and own.get("score") is not None:
-        try:
-            return float(own["score"])
-        except (TypeError, ValueError):
-            pass
+        return float(own["score"])
     return row_cvss
 
 
@@ -133,6 +127,13 @@ def advisories_for_version(
     clear_ranges: dict = {}
     cve_specific: dict = {}
 
+    parsed_prose: dict = {}
+
+    def prose(text: str) -> dict:
+        if text not in parsed_prose:
+            parsed_prose[text] = analyze_range_prose([text])
+        return parsed_prose[text]
+
     spans_by_key: dict = {}
     trains_spanned: dict = {}
     for r in rows:
@@ -143,7 +144,7 @@ def advisories_for_version(
         rg = (r.get("affected_range") or "").strip()
         if not rg:
             continue
-        parsed = analyze_range_prose([rg])
+        parsed = prose(rg)
         if not parsed["ranges"]:
             continue
         spans_by_key[k] = True
@@ -178,18 +179,16 @@ def advisories_for_version(
                 known_exploited=(r.get("known_exploited") or "").strip(),
                 epss=r.get("epss"),
                 in_cisa_kev=bool(r.get("in_cisa_kev")),
-                kev_due_date=str(r.get("kev_due_date") or "").strip(),
+                kev_due_date=r.get("kev_due_date") or "",
             )
         rng = (r.get("affected_range") or "").strip()
         fix = (r.get("fixed_version_clean") or "").strip()
         row_status = (r.get("status") or "").strip().lower()
         statuses.setdefault(key, set()).add(row_status)
-        if rng and rng not in adv.affected_prose:
-            adv.affected_prose.append(rng)
         if fix and fix not in adv.fixed_versions and _same_series(fix, os_version):
             adv.fixed_versions.append(fix)
 
-        seen_prose = analyze_range_prose([rng]) if rng else {"ranges": [], "blind": False}
+        seen_prose = prose(rng) if rng else {"ranges": [], "blind": False}
         row_states_complete_span = bool(seen_prose["ranges"]) and not seen_prose["blind"]
         if fix and _same_series(fix, os_version, strict=spans_by_key.get(key, False)):
             cand = {"introduced": "", "fixed": fix}
