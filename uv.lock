@@ -243,6 +243,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ntc-templates"
+version = "9.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "textfsm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/63/0f/4f1e745d5871490e86d2ae9839b51486e1389d0c25b0dbbbd3f15853bd81/ntc_templates-9.3.0.tar.gz", hash = "sha256:2045d20839b5892152637b7c22893923c9a57b6c3e92771fc976f473d0fb05e3", size = 327538, upload-time = "2026-09-14T18:44:03.579Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/a6/18d45e81eb4d6fbf3c906f7ecf1aee4a1db4c3f748de3be15ff8119fa906/ntc_templates-9.3.0-py3-none-any.whl", hash = "sha256:ad607a137e68e302de041ed0e9973fa3f192d32ed44a0092219886f557be814f", size = 651920, upload-time = "2026-09-14T18:44:02.062Z" },
+]
+
+[[package]]
 name = "opentelemetry-api"
 version = "1.45.0"
 source = { registry = "https://pypi.org/simple" }
@@ -532,6 +544,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "mcp" },
+    { name = "ntc-templates" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyyaml" },
     { name = "starlette" },
@@ -547,6 +560,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "mcp", specifier = "==2.2.0" },
+    { name = "ntc-templates" },
     { name = "psycopg", extras = ["binary"] },
     { name = "pyyaml" },
     { name = "starlette" },
@@ -557,6 +571,15 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.13" },
+]
+
+[[package]]
+name = "textfsm"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/87/2a93c2ced2a11fb26cfec3623894a9127b9b67ae3cfdd1778afa5cff576f/textfsm-2.1.0.tar.gz", hash = "sha256:45c18ff2b7c90163dfdff7e20d3f482514cc7aac26bc2547744e79dfa761e458", size = 55486, upload-time = "2025-04-17T04:55:46.392Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/1a/ab772f8479adedad1bdd12dd5c2bf6facf3fad8d04f35b4f4053201d202d/textfsm-2.1.0-py2.py3-none-any.whl", hash = "sha256:55886490474890fa09ade0e8c9555a913fd325724842293364dc44ea705b3616", size = 44345, upload-time = "2025-04-17T04:55:44.542Z" },
 ]
 
 [[package]]

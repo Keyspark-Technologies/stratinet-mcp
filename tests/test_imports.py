@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ("server", "common", "engines")
-ALLOWED_THIRD_PARTY = frozenset({"mcp", "psycopg", "starlette", "uvicorn", "yaml"})
+ALLOWED_THIRD_PARTY = frozenset({"mcp", "ntc_templates", "psycopg", "starlette", "uvicorn", "yaml"})
 ALLOWED = frozenset(sys.stdlib_module_names) | frozenset(PACKAGES) | ALLOWED_THIRD_PARTY
 
 

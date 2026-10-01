@@ -1,7 +1,9 @@
 files:
   - dest: engines/cve/rule_loader.py
-    sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
+    sha256: 33a1a14604c0b20ca043c2ff0d28158739f583db41ba50a10fa2cc45a4937fda
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
+    local_edit: "comments and docstrings removed"
   - dest: engines/cve/version_match.py
     sha256: 9b497c885b414c39952b1262ee33137aa166540fd730ab3cefd23d07b070a43f
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
@@ -12,3 +14,33 @@ files:
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
     local_edit: comment only (line 21) -- internal device name replaced; the repo is public
+  - dest: engines/triage/extract.py
+    sha256: fe94cf041235b7a45d2e24de783f6800efb1ecd9622165037f3b05b5b93b135b
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: c792df1e71fcd7fc5d7fd07f7a552d028404721f803b9bfbe63a1f098ec3104b
+    local_edit: "model layer removed (extract_with_model and the model constant); extract_layered is deterministic only; internal device names replaced in comments; comments and docstrings removed"
+  - dest: engines/triage/findings.py
+    sha256: 4ab5d34e4dba6f34d4bfdeaa1af39c601a92c6014342c54c0ebf9d69aad733d3
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 709e8589e170aad0039e369ec6a93a2f884ce34f8e5b8969d41df3145bf92939
+    local_edit: "comment only -- internal device name replaced; the repo is public; comments and docstrings removed"
+  - dest: engines/triage/select.py
+    sha256: da02b7eb941b4a00f4460c50fc6c9f5d93f350ce65ba473b91fdde6f5eb81f5e
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 19583df78109d46be5772fcdc17d9b44db69e6b9eaf24b9fd88dc2adb2cf79d7
+    local_edit: "SOP path read from server.data_dir(); comments and docstrings removed"
+  - dest: engines/triage/signals.py
+    sha256: 0f8661e3a9543cd756dd0dcb1d3ef6db55162861b2085c04cd779d9b87f8c344
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 0cba7bec829f2d3332c9686af39e52e7afd8a02695d50fc25baa30f65b3c1c41
+    local_edit: "SOP path read from server.data_dir(); comment -- internal device name replaced; comments and docstrings removed"
+  - dest: engines/triage/triage.py
+    sha256: ad5ca3a4800d553d4818033da61c9b3da30ab7c9d8e561dfbe525358907f0956
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 956a5f0368e07bfff1418d42b6c2ee2f1a1616c0e67d3483bfb9f66f3fc1d687
+    local_edit: "deterministic only: no alert-rule mapping, config_change, database command lookup, model chooser, model summary or remediations; cannot_determine replaces no_fault_found; _fill inlined; internal names removed from comments; comments and docstrings removed"
+  - dest: engines/triage/triage_readonly.py
+    sha256: ffef51b72d07c30145aa9e3554badc335f47c2c2ca095f99bf037450c40e7fab
+    upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
+    upstream_sha256: 35ccba901f5288b4e35595a56bdade2c71326837b104098aac4d510c5f8a9833
+    local_edit: "comments only -- internal component names removed; the repo is public; comments and docstrings removed"

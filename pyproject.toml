@@ -5,6 +5,7 @@ description = "Public MCP server: advisory exposure and network troubleshooting.
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "mcp==2.2.0",
+    "ntc-templates",
     "psycopg[binary]",
     "pyyaml",
     "starlette",
@@ -32,6 +33,12 @@ extend-exclude = [
     "engines/cve/rule_loader.py",
     "engines/cve/version_match.py",
     "engines/cve/cve_authority.py",
+    "engines/triage/extract.py",
+    "engines/triage/findings.py",
+    "engines/triage/select.py",
+    "engines/triage/signals.py",
+    "engines/triage/triage.py",
+    "engines/triage/triage_readonly.py",
 ]
 
 [tool.ruff.lint]
@@ -39,4 +46,4 @@ select = ["E", "F", "W", "I", "B", "UP", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "server/main.py" = ["S104"]
-"tests/**" = ["S101", "S310"]
+"tests/**" = ["S101", "S310", "S603"]
