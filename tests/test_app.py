@@ -23,15 +23,17 @@ def http(url, method="GET", body=None, headers=None):
         return e.code, e.read()
 
 
-async def test_client_lists_and_calls_ping(live_server):
+async def test_client_lists_the_tools_and_gets_a_structured_error(live_server):
     async with Client(f"{live_server}/mcp") as client:
         tools = await client.list_tools()
-        result = await client.call_tool("ping", {})
+        result = await client.call_tool(
+            "translate_diagnostic", {"capability": "check-bgp-summary", "target_vendor": "x"}
+        )
 
-    assert [t.name for t in tools.tools] == ["ping"]
-    assert tools.tools[0].input_schema["additionalProperties"] is False
-    assert not result.is_error
-    assert result.structured_content == {"result": "pong"}
+    assert [t.name for t in tools.tools] == ["translate_diagnostic", "troubleshoot_start"]
+    assert all(t.input_schema["additionalProperties"] is False for t in tools.tools)
+    assert result.is_error
+    assert result.structured_content["error"]["code"] == "unsupported_vendor"
     assert json.loads(result.content[0].text) == result.structured_content
 
 

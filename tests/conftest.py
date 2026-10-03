@@ -12,10 +12,25 @@ from server.settings import Settings
 FIXTURE_DATA = Path(__file__).parent / "fixtures" / "bundle"
 
 
+def clear_engine_caches():
+    from engines.triage import catalog, select, signals, triage
+
+    for cached in (
+        catalog._cached,
+        select._index,
+        signals.load_signals,
+        triage._clause_order,
+        triage._compares_both_ends,
+    ):
+        cached.cache_clear()
+
+
 @pytest.fixture(autouse=True)
 def fixture_data_dir(monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(FIXTURE_DATA))
-    return FIXTURE_DATA
+    clear_engine_caches()
+    yield FIXTURE_DATA
+    clear_engine_caches()
 
 
 @pytest.fixture
