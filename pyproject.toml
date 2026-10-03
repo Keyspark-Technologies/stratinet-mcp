@@ -39,6 +39,7 @@ extend-exclude = [
     "engines/triage/signals.py",
     "engines/triage/triage.py",
     "engines/triage/triage_readonly.py",
+    "engines/cve/grounding.py",
 ]
 
 [tool.ruff.lint]

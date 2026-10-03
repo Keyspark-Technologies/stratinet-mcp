@@ -43,3 +43,5 @@ tests/test_translate_diagnostic.py
 tests/test_troubleshoot_start.py
 tests/test_catalog_index.py
 tests/test_tools_real_data.py
+tests/test_public_verdict_mapping.py
+tests/test_feature_facts.py
