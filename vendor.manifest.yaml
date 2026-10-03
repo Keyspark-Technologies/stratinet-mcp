@@ -35,10 +35,10 @@ files:
     upstream_sha256: 0cba7bec829f2d3332c9686af39e52e7afd8a02695d50fc25baa30f65b3c1c41
     local_edit: "SOP path read from server.data_dir(); comment -- internal device name replaced; comments and docstrings removed"
   - dest: engines/triage/triage.py
-    sha256: ad5ca3a4800d553d4818033da61c9b3da30ab7c9d8e561dfbe525358907f0956
+    sha256: baf8f196290a9c2d1cf9a9402d2500ee2560ba58b78980abf9737ec026a3444a
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 956a5f0368e07bfff1418d42b6c2ee2f1a1616c0e67d3483bfb9f66f3fc1d687
-    local_edit: "deterministic only: no alert-rule mapping, config_change, database command lookup, model chooser, model summary or remediations; cannot_determine replaces no_fault_found; _fill inlined; internal names removed from comments; comments and docstrings removed"
+    local_edit: "deterministic only: no alert-rule mapping, config_change, database command lookup, model chooser, model summary or remediations; cannot_determine replaces no_fault_found; _fill inlined; internal names removed from comments; comments and docstrings removed; command_for from the catalog"
   - dest: engines/triage/triage_readonly.py
     sha256: ffef51b72d07c30145aa9e3554badc335f47c2c2ca095f99bf037450c40e7fab
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd

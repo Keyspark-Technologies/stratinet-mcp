@@ -10,13 +10,13 @@ from starlette.responses import JSONResponse
 from server import startup
 from server.app import StratinetServer
 from server.settings import Settings, SettingsError
-from server.tools import ping
+from server.tools import translate_diagnostic, troubleshoot_start
 
 logger = logging.getLogger(__name__)
 
 MAX_REQUEST_BODY_BYTES = 1024 * 1024
 
-TOOL_MODULES = (ping,)
+TOOL_MODULES = (translate_diagnostic, troubleshoot_start)
 
 
 def build_server(settings: Settings) -> StratinetServer:
