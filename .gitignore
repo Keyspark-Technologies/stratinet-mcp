@@ -38,3 +38,8 @@ tests/test_applicability.py
 tests/test_corpus_query.py
 tests/test_validate.py
 tests/test_triage_local.py
+tests/test_catalog.py
+tests/test_translate_diagnostic.py
+tests/test_troubleshoot_start.py
+tests/test_catalog_index.py
+tests/test_tools_real_data.py
