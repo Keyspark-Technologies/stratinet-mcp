@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from common.validate import ToolInputError
+from engines.cve.applicability import CLEARED_NOT_THIS_PRODUCT
 
 NOT_AFFECTED = "not_affected"
 VULNERABLE = "vulnerable"
@@ -236,8 +237,13 @@ def facts_for(lookup, cve_id: str, rules: RuleFacts, grounding: str | None = Non
             version_match, version_reason = None, VERSION_LINES_NOT_COMPARABLE
         else:
             version_match, version_reason = None, AFFECTED_RANGE_UNREADABLE
+    has_rows = cid in lookup.cves_seen
+    if has_rows and not any(a.cve_id == cid for a in lookup.advisories):
+        gone = [a for a in lookup.cleared if a.cve_id == cid]
+        if gone and all(a.cleared == CLEARED_NOT_THIS_PRODUCT for a in gone):
+            has_rows = False
     return Facts(
-        has_rows=cid in lookup.cves_seen,
+        has_rows=has_rows,
         version_match=version_match,
         version_reason=version_reason,
         has_rule=rules.has_rule,

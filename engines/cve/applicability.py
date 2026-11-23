@@ -28,6 +28,10 @@ SUPPORTED_VENDORS = sorted(_VENDORS)
 
 _MAX_VERSION_BYTES = 64
 
+CLEARED_VERSION = "version"
+CLEARED_VENDOR = "vendor_not_affected"
+CLEARED_NOT_THIS_PRODUCT = "not_this_product"
+
 _AUTHORITY_FILE = os.path.join("cve", "cve_authority.json")
 
 
@@ -45,7 +49,9 @@ class AdvisoryMatch:
     advisory_id: str
     substantiated: bool = True
     version_undecidable: bool = False
+    cleared: str = ""
     affected_ranges: list = field(default_factory=list)
+    ranges_checked: list = field(default_factory=list)
     fixed_versions: list = field(default_factory=list)
     url: str = ""
     published: str = ""
@@ -63,6 +69,7 @@ class LookupResult:
     version: str
     version_comparable: bool
     advisories: list = field(default_factory=list)
+    cleared: list = field(default_factory=list)
     cves_seen: tuple = ()
 
 
@@ -216,7 +223,7 @@ def advisories_for_version(
         if rng and row_status != "not_affected" and seen_prose["blind"]:
             blind[key] = True
 
-    kept = _applicable(
+    kept, cleared = _applicable(
         list(merged.values()),
         plat,
         os_version,
@@ -229,7 +236,9 @@ def advisories_for_version(
         authority,
     )
     kept.sort(key=lambda a: (a.cve_id, a.advisory_id))
+    cleared.sort(key=lambda a: (a.cve_id, a.advisory_id))
     result.advisories = kept
+    result.cleared = cleared
     return result
 
 
@@ -244,26 +253,36 @@ def _applicable(
     cve_specific: dict,
     products: list,
     authority_path: str,
-) -> list:
-    kept = []
+) -> tuple[list, list]:
+    kept, cleared = [], []
+
+    def clear(a, why, ranges):
+        a.cleared = why
+        a.ranges_checked = list(ranges)
+        cleared.append(a)
+
     for a in advisories:
         key = (a.advisory_id, a.cve_id)
         st = statuses.get(key) or set()
+        cr = clear_ranges.get(key) or []
         if st and st <= {"not_affected", ""}:
+            clear(a, CLEARED_VENDOR, cr)
             continue
         if not cve_specific.get(key):
             if (
                 cve_authority.product_attributed(a.cve_id, platform, products, path=authority_path)
                 is False
             ):
+                clear(a, CLEARED_NOT_THIS_PRODUCT, [])
                 continue
-        cr = clear_ranges.get(key) or []
         if cr and matches_any_range(os_version, cr) is True:
             if matches_any_range(os_version, a.affected_ranges) is not True:
+                clear(a, CLEARED_VENDOR, cr)
                 continue
         if blind.get(key):
             fr = fix_ranges.get(key) or []
             if fr and matches_any_range(os_version, fr) is False:
+                clear(a, CLEARED_VERSION, fr)
                 continue
             if matches_any_range(os_version, a.affected_ranges) is True:
                 kept.append(a)
@@ -273,6 +292,7 @@ def _applicable(
             continue
         if not a.affected_ranges:
             if st and not (st & {"affected", "migrate"}):
+                clear(a, CLEARED_NOT_THIS_PRODUCT, [])
                 continue
             a.substantiated = False
             kept.append(a)
@@ -284,4 +304,6 @@ def _applicable(
             kept.append(a)
         elif hit:
             kept.append(a)
-    return kept
+        else:
+            clear(a, CLEARED_VERSION, a.affected_ranges)
+    return kept, cleared

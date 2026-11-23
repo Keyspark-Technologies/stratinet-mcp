@@ -28,8 +28,8 @@ async def test_client_lists_and_calls_ping(live_server):
         tools = await client.list_tools()
         result = await client.call_tool("ping", {})
 
-    assert [t.name for t in tools.tools] == ["ping"]
-    assert tools.tools[0].input_schema["additionalProperties"] is False
+    assert "ping" in [t.name for t in tools.tools]
+    assert all(t.input_schema["additionalProperties"] is False for t in tools.tools)
     assert not result.is_error
     assert result.structured_content == {"result": "pong"}
     assert json.loads(result.content[0].text) == result.structured_content

@@ -40,7 +40,7 @@ JOIN kb.advisory a        ON a.advisory_pk = act.advisory_pk AND a.valid_to IS N
 JOIN kb.load_generation g ON g.gen_id = a.gen_id AND g.is_current
 WHERE a.advisory_id = ANY(%(advisories)s)
   AND act.kind = ANY(%(kinds)s)
-ORDER BY a.advisory_id, act.kind
+ORDER BY a.advisory_id, act.kind, act.action_pk
 """
 
 
