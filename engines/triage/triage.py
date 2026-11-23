@@ -4,7 +4,8 @@ import functools
 import string
 
 from .extract import extract_layered
-from .loaders import command_for, load_issues
+from .catalog import command_for
+from .loaders import load_issues
 from .findings import could_outrank, is_fault, layer_of_signal, outrankers, rank
 from .select import checks_for_issue, issues_confirming, layer_of, opening_checks
 from .observe import observe

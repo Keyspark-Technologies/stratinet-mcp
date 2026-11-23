@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml
 
 from engines.cve.rule_loader import load_rules
+from engines.triage.catalog import load as load_catalog
 from server.data import data_dir
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ def warm_command_catalog(root: Path) -> None:
     commands = root / "sop" / "vendor_commands.yaml"
     _rows(commands, "vendor_commands", ("capability", "vendor", "command"))
     _rows(root / "sop" / "capabilities.yaml", "capabilities", ("key",))
+    load_catalog(root)
 
 
 def warm_issue_index(root: Path) -> None:

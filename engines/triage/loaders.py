@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -30,23 +28,3 @@ def load_issues() -> list[dict]:
         if doc and doc.get("issue"):
             out.append(doc)
     return out
-
-
-@dataclass(frozen=True)
-class VendorCommand:
-    command: str
-    params: tuple[str, ...]
-
-
-def command_for(capability: str, vendor: str) -> VendorCommand | None:
-    return _command_index(_sop_dir()).get((capability, vendor))
-
-
-@lru_cache(maxsize=4)
-def _command_index(sop_dir: Path) -> dict[tuple[str, str], VendorCommand]:
-    index: dict[tuple[str, str], VendorCommand] = {}
-    for row in load_vendor_commands():
-        key = (row.get("capability"), row.get("vendor"))
-        if key not in index and row.get("command"):
-            index[key] = VendorCommand(row["command"], tuple(row.get("params") or ()))
-    return index
