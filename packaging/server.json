@@ -1,0 +1,34 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Keyspark-Technologies/stratinet-mcp",
+  "title": "Stratinet",
+  "description": "Deterministic network advisory exposure and troubleshooting. No model, no guessed 'not affected'.",
+  "version": "0.1.0",
+  "websiteUrl": "https://github.com/Keyspark-Technologies/stratinet-mcp",
+  "repository": {
+    "url": "https://github.com/Keyspark-Technologies/stratinet-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://stratinet-mcp.invalid/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Your Stratinet API key, sent as a Bearer token.",
+          "isRequired": true,
+          "isSecret": true,
+          "value": "Bearer {api_key}",
+          "variables": {
+            "api_key": {
+              "description": "Your Stratinet API key.",
+              "isRequired": true,
+              "isSecret": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

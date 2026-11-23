@@ -1,0 +1,89 @@
+{
+  "manifest_version": "0.3",
+  "name": "stratinet-mcp",
+  "display_name": "Stratinet",
+  "version": "0.1.0",
+  "description": "Deterministic network advisory exposure and troubleshooting. No model, no guessed 'not affected'.",
+  "long_description": "Stratinet answers four read-only questions about network devices from catalogued data and hand-written rules. No language model produces the answers, and no answer is a guessed 'not affected': when the data cannot settle a question, the answer says so and names what would settle it.\n\n**Coverage**\n\n- advisory_exposure: Arista EOS and Fortinet FortiOS only. Configuration-based exposure rules exist for a subset of CVEs; for the others the answer rests on version ranges and says what would settle exposure.\n- troubleshoot_start and troubleshoot_analyze: Arista EOS, Cisco IOS and Juniper Junos, for three symptoms: bgp-session-down, ospf-neighbor-down and interface-degraded. Cisco IOS XE is not claimed.\n- translate_diagnostic: many capabilities are catalogued for one vendor only; for those the answer is that no equivalent is catalogued.\n- Most catalogued commands have not yet been run on real hardware; translate_diagnostic and troubleshoot_start say for each command whether it has.\n\n**How this extension works**\n\nThe extension is a small local bridge with no dependencies. It forwards each MCP request over HTTPS to the hosted Stratinet server with your API key as a Bearer token. The inputs you give the tools, including pasted device output and configuration, are sent to that server.",
+  "author": {
+    "name": "Keyspark Technologies",
+    "url": "https://github.com/Keyspark-Technologies"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Keyspark-Technologies/stratinet-mcp"
+  },
+  "homepage": "https://github.com/Keyspark-Technologies/stratinet-mcp",
+  "support": "https://github.com/Keyspark-Technologies/stratinet-mcp/issues",
+  "keywords": [
+    "networking",
+    "security-advisories",
+    "troubleshooting",
+    "arista",
+    "fortinet",
+    "cisco",
+    "juniper"
+  ],
+  "privacy_policies": [
+    "https://stratinet-mcp-privacy.invalid/"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "STRATINET_MCP_URL": "${user_config.server_url}",
+        "STRATINET_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "translate_diagnostic",
+      "description": "Translate a read-only network diagnostic into another vendor's CLI. Give a capability such as check-bgp-summary and one or more target vendors; get the catalogued command for each vendor, whether it has been run on real hardware, and which vendors have it. If the capability is unknown, returns close capability names. Never returns configuration commands. Vendors: arista_eos, cisco_ios, fortinet_fortianalyzer, fortinet_fortimanager, fortinet_fortios, fortinet_fortiswitch, juniper_junos, paloalto_panos."
+    },
+    {
+      "name": "troubleshoot_start",
+      "description": "Start troubleshooting a network problem: give a symptom and a vendor, get the ordered read-only checks to run on the device, each with its command, what it can show and whether the command has run on real hardware. Symptoms: bgp-session-down, ospf-neighbor-down, interface-degraded (only procedures verified on real devices are accepted). Vendors: arista_eos, cisco_ios, juniper_junos. Optional context fills the interface or peer address into the commands. Run the checks, then pass their output to troubleshoot_analyze."
+    },
+    {
+      "name": "advisory_exposure",
+      "description": "Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it."
+    },
+    {
+      "name": "troubleshoot_analyze",
+      "description": "Analyze pasted output of read-only troubleshooting commands for one network problem. Give the vendor, the symptom (bgp-session-down, ospf-neighbor-down or interface-degraded) and up to 8 outputs, each with the command that produced it and whether it came from the local or the peer device. Returns root_cause with the proving line, need_more_evidence with the strongest reading so far and up to 3 commands to run next, or cannot_determine with what would settle it. Outputs that could not be read are listed in unread and never count as health. Vendors: arista_eos, cisco_ios, juniper_junos. Set evidence_complete when the device cannot be reached again; the answer then says which checks were missing."
+    }
+  ],
+  "tools_generated": false,
+  "prompts_generated": false,
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "API key",
+      "description": "Your Stratinet API key. It is stored by Claude Desktop and sent only to the server URL below.",
+      "required": true,
+      "sensitive": true
+    },
+    "server_url": {
+      "type": "string",
+      "title": "Server URL",
+      "description": "The Stratinet MCP endpoint. Keep the default unless you were given another one.",
+      "required": false,
+      "default": "https://stratinet-mcp.invalid/mcp"
+    }
+  }
+}
