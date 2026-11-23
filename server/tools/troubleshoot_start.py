@@ -3,13 +3,11 @@ import json
 import re
 from typing import Any
 
-import yaml
-
 from common.validate import ToolInputError, check_fields, check_size
-from engines.triage import catalog, loaders, select, signals
+from engines.triage import catalog, loaders, select, signals, symptoms
 from engines.triage.triage import _clause_order, _fill
 from engines.triage.triage_readonly import _is_read_only
-from server.data import data_dir, data_version
+from server.data import data_version
 from server.startup import SHIPPING_ISSUES
 
 NAME = "troubleshoot_start"
@@ -80,31 +78,11 @@ def supported_symptoms() -> list[str]:
     )
 
 
-def _aliases() -> dict[str, str]:
-    path = data_dir() / "sop" / "symptom_aliases.yaml"
-    if not path.is_file():
-        return {}
-    doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    table = doc.get("aliases", doc) if isinstance(doc, dict) else None
-    if not isinstance(table, dict):
-        return {}
-    return {
-        " ".join(alias.lower().split()): key
-        for alias, key in table.items()
-        if isinstance(alias, str) and isinstance(key, str)
-    }
-
-
 def resolve_symptom(value: Any) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ToolInputError("invalid_value", field="symptom")
     check_size(value, MAX_SYMPTOM_BYTES, "symptom")
-    spoken = " ".join(value.lower().split())
-    supported = supported_symptoms()
-    key = spoken if spoken in SHIPPING_ISSUES else _aliases().get(spoken)
-    if key not in supported:
-        raise ToolInputError("unsupported_symptom", supported=supported, field="symptom")
-    return key
+    return symptoms.resolve(value, supported_symptoms())
 
 
 def _vendor(value: Any) -> str:
