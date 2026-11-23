@@ -54,3 +54,5 @@ tests/test_limits.py
 tests/test_auth_settings.py
 tests/test_timeouts.py
 tests/test_hardening.py
+tests/test_e2e.py
+tests/made_up_bundle.py

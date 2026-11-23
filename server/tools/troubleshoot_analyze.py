@@ -348,7 +348,7 @@ def _explanation(cause: str, means: str, root: dict, vendor: str, explained: int
     parts = [means] if means else []
     parts.append(
         f"Proved by '{root.get('command')}' ({root.get('capability')}) on {vendor}, "
-        f"read as {cause}: {root.get('evidence') or ''}"
+        f"read as {cause}: '{root.get('evidence') or ''}'"
     )
     if explained:
         parts.append(f"{explained} other reading(s) are explained by this cause.")
