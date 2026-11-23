@@ -43,3 +43,16 @@ jobs:
 
       - if: steps.project.outputs.present == 'true'
         run: uv run --no-sync pytest
+
+      - if: steps.project.outputs.present == 'true'
+        run: uv run --no-sync python packaging/check.py
+
+      - if: steps.project.outputs.present == 'true'
+        run: >-
+          uv run --no-sync python packaging/check.py --release
+          --mcp-url https://mcp.example.com/mcp
+          --privacy-url https://example.com/privacy
+          --out "$RUNNER_TEMP/packaging"
+
+      - if: steps.project.outputs.present == 'true'
+        run: node --check packaging/mcpb/server/index.js
