@@ -48,6 +48,9 @@ jobs:
         run: uv run --no-sync python packaging/check.py
 
       - if: steps.project.outputs.present == 'true'
+        run: uv run --no-sync python scripts/gen_tool_docs.py --check
+
+      - if: steps.project.outputs.present == 'true'
         run: >-
           uv run --no-sync python packaging/check.py --release
           --mcp-url https://mcp.example.com/mcp
