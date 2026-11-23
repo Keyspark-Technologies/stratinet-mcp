@@ -34,6 +34,7 @@ async def test_client_lists_the_tools_and_gets_a_structured_error(live_server):
         "translate_diagnostic",
         "troubleshoot_start",
         "advisory_exposure",
+        "troubleshoot_analyze",
     ]
     assert all(t.input_schema["additionalProperties"] is False for t in tools.tools)
     assert result.is_error

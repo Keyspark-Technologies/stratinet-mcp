@@ -13,7 +13,7 @@ FIXTURE_DATA = Path(__file__).parent / "fixtures" / "bundle"
 
 
 def clear_engine_caches():
-    from engines.triage import catalog, select, signals, triage
+    from engines.triage import catalog, select, signals, symptoms, triage
     from server.tools import advisory_exposure
 
     for cached in (
@@ -21,6 +21,7 @@ def clear_engine_caches():
         catalog._cached,
         select._index,
         signals.load_signals,
+        symptoms._cached,
         triage._clause_order,
         triage._compares_both_ends,
     ):

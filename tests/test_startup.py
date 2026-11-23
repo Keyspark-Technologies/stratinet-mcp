@@ -10,6 +10,7 @@ def test_checks_run_in_the_required_order():
         "detector rules",
         "command catalog",
         "issue index",
+        "symptom aliases",
         "signals",
         "corpus generation",
     ]
