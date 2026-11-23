@@ -1,11 +1,12 @@
 import ipaddress
 import re
+import string
 from typing import Any
 
 from common.project import fit
 from common.validate import ToolInputError, check_fields, check_size
 from engines.triage import catalog, loaders, select, signals, symptoms
-from engines.triage.triage import _clause_order, _fill
+from engines.triage.triage import _clause_order
 from engines.triage.triage_readonly import _is_read_only
 from server.data import data_version
 from server.startup import SHIPPING_ISSUES
@@ -20,6 +21,7 @@ MAX_CONTEXT_BYTES = 200
 COST_ORDER = {"cheap": 0, "moderate": 1, "expensive": 2}
 ALL_READABLE = "every step in this procedure has an evidence rule"
 INTERFACE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9/._:-]{0,63}")
+CONTEXT_FIELD = {"ifname": "interface", "ospf_if": "interface", "peer_ip": "peer_ip"}
 
 DESCRIPTION = (
     "Start troubleshooting a network problem: give a symptom and a vendor, get the ordered "
@@ -27,8 +29,10 @@ DESCRIPTION = (
     "the command has run on real hardware. Symptoms: bgp-session-down, ospf-neighbor-down, "
     "interface-degraded (only procedures verified on real devices are accepted). Vendors: "
     + ", ".join(VENDORS)
-    + ". Optional context fills the interface or peer address into the commands. Run the checks, "
-    "then pass their output to troubleshoot_analyze."
+    + ". Optional context fills the interface or peer address into the commands; a command that "
+    "still holds a {placeholder} lists it in placeholders, with the context field that fills it "
+    "or null when the value must be typed in by hand. Run the checks, then pass their output to "
+    "troubleshoot_analyze."
 )
 
 SCHEMA = {
@@ -119,6 +123,18 @@ def _context(value: Any) -> dict[str, str]:
     return params
 
 
+def render(template: str, allowed, params: dict[str, str]) -> tuple[str, list[dict]]:
+    slots = list(
+        dict.fromkeys(name for _, name, _, _ in string.Formatter().parse(template) if name)
+    )
+    known = {name: params[name] for name in slots if name in allowed and params.get(name)}
+    missing = [name for name in slots if name not in known]
+    text = template.format(**known, **{name: "{" + name + "}" for name in missing})
+    return text, [
+        {"placeholder": "{" + name + "}", "context": CONTEXT_FIELD.get(name)} for name in missing
+    ]
+
+
 def ordered_checks(issue: str) -> list[str]:
     pool = select.checks_for_issue(issue)
     clauses = _clause_order(issue)
@@ -185,7 +201,7 @@ def troubleshoot_start(arguments: dict[str, Any]) -> dict[str, Any]:
         if command is None:
             missing_command += 1
             continue
-        text, _missing = _fill(command.command, params, set(command.params))
+        text, placeholders = render(command.command, command.params, params)
         is_check = (cat.capabilities.get(capability) or {}).get("kind") == "check"
         if not is_check or not _is_read_only(command.command) or not _is_read_only(text):
             refused += 1
@@ -195,17 +211,18 @@ def troubleshoot_start(arguments: dict[str, Any]) -> dict[str, Any]:
             continue
         step = by_capability.get(capability) or {}
         described = (cat.capabilities.get(capability) or {}).get("description") or ""
-        checks.append(
-            {
-                "order": len(checks) + 1,
-                "capability": capability,
-                "command": text,
-                "description": step.get("sop_step_title") or described,
-                "why": step.get("description") or described,
-                "reads": _reads(capability),
-                "hardware_verified": command.hardware_verified,
-            }
-        )
+        check = {
+            "order": len(checks) + 1,
+            "capability": capability,
+            "command": text,
+            "description": step.get("sop_step_title") or described,
+            "why": step.get("description") or described,
+            "reads": _reads(capability),
+            "hardware_verified": command.hardware_verified,
+        }
+        if placeholders:
+            check["placeholders"] = placeholders
+        checks.append(check)
 
     common = {"basis": BASIS, "data_version": data_version(corpus=False)}
     if not checks:

@@ -22,6 +22,7 @@ ENV PATH=/opt/venv/bin:$PATH \
 RUN useradd --system --no-create-home --uid 10001 app
 COPY --from=deps /opt/venv /opt/venv
 WORKDIR /app
+COPY pyproject.toml ./
 COPY server/ server/
 COPY common/ common/
 COPY engines/ engines/

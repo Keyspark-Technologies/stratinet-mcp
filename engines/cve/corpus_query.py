@@ -29,6 +29,7 @@ LEFT JOIN LATERAL (
     WHERE ac.advisory_pk = ap.advisory_pk AND COALESCE(ap.cve_id, '') = ''
 ) bundle ON true
 WHERE p.product_clean = ANY(%(products)s)
+ORDER BY a.advisory_id, ap.claim_pk, cve_id
 """
 
 ACTION_KINDS = ("verify", "workaround")

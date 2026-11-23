@@ -362,6 +362,12 @@ def _finding(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
         out["ranges_checked"] = _ranges([r for a in kept for r in a.affected_ranges])
         return out
     first = rule_features[0] if rule_features else None
+    cited = None
+    if verdict.verdict == pv.LIKELY_VULNERABLE_UNLESS_DISABLED:
+        cited = pv.default_on_source(rule_features, key, features)
+        if cited is None:
+            raise ValueError("likely_vulnerable_unless_disabled without a cited default_on")
+        first = cited[0]
     spec = features.get(first) or {}
     out["feature"] = first
     if verdict.verdict == pv.VULNERABLE:
@@ -390,12 +396,11 @@ def _finding(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
         ]
     out["fixed_in"] = fixed_in
     if verdict.verdict == pv.LIKELY_VULNERABLE_UNLESS_DISABLED:
-        source = (spec.get("default_on") or {}).get(key) or {}
         out["reason"] = (
             "the affected feature is enabled by default; exposure ends only if it is disabled"
         )
         out["default_state"] = "enabled"
-        out["default_on_source"] = {"quote": source.get("quote"), "url": source.get("url")}
+        out["default_on_source"] = cited[1]
         hardening = _commands(rows.get("workaround", []))
         if hardening:
             out["hardening_commands"] = hardening

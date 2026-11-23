@@ -204,7 +204,7 @@ output to `troubleshoot_analyze`.
 ### Input
 
 <!-- BEGIN GENERATED: troubleshoot_start -->
-> Start troubleshooting a network problem: give a symptom and a vendor, get the ordered read-only checks to run on the device, each with its command, what it can show and whether the command has run on real hardware. Symptoms: bgp-session-down, ospf-neighbor-down, interface-degraded (only procedures verified on real devices are accepted). Vendors: arista_eos, cisco_ios, juniper_junos. Optional context fills the interface or peer address into the commands. Run the checks, then pass their output to troubleshoot_analyze.
+> Start troubleshooting a network problem: give a symptom and a vendor, get the ordered read-only checks to run on the device, each with its command, what it can show and whether the command has run on real hardware. Symptoms: bgp-session-down, ospf-neighbor-down, interface-degraded (only procedures verified on real devices are accepted). Vendors: arista_eos, cisco_ios, juniper_junos. Optional context fills the interface or peer address into the commands; a command that still holds a {placeholder} lists it in placeholders, with the context field that fills it or null when the value must be typed in by hand. Run the checks, then pass their output to troubleshoot_analyze.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -250,7 +250,7 @@ Reads pasted output of read-only commands for one problem and says what it prove
 ### Input
 
 <!-- BEGIN GENERATED: troubleshoot_analyze -->
-> Analyze pasted output of read-only troubleshooting commands for one network problem. Give the vendor, the symptom (bgp-session-down, ospf-neighbor-down or interface-degraded) and up to 8 outputs, each with the command that produced it and whether it came from the local or the peer device. Returns root_cause with the proving line, need_more_evidence with the strongest reading so far and up to 3 commands to run next, or cannot_determine with what would settle it. Outputs that could not be read are listed in unread and never count as health. Vendors: arista_eos, cisco_ios, juniper_junos. Set evidence_complete when the device cannot be reached again; the answer then says which checks were missing.
+> Analyze pasted output of read-only troubleshooting commands for one network problem. Give the vendor, the symptom (bgp-session-down, ospf-neighbor-down or interface-degraded) and up to 8 outputs, each with the command that produced it and whether it came from the local or the peer device. Returns root_cause with the proving line, need_more_evidence with the strongest reading so far and up to 3 commands to run next, or cannot_determine with what would settle it. Outputs that could not be read are listed in unread and never count as health. A next command that still holds a {placeholder} lists it in placeholders, with the context field that fills it or null when the value must be typed in by hand. Vendors: arista_eos, cisco_ios, juniper_junos. Set evidence_complete when the device cannot be reached again; the answer then says which checks were missing.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|

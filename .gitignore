@@ -56,3 +56,6 @@ tests/test_timeouts.py
 tests/test_hardening.py
 tests/test_e2e.py
 tests/made_up_bundle.py
+tests/test_default_on.py
+tests/test_placeholders.py
+tests/test_determinism_fixes.py
