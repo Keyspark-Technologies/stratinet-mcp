@@ -12,6 +12,16 @@ MESSAGES = {
     "internal_error": "The tool could not complete this request.",
 }
 
+HTTP_MESSAGES = {
+    "unauthorized": "A valid API key is required.",
+    "rate_limited": "Too many requests for this API key. Try again later.",
+    "unavailable": "The service is temporarily unavailable.",
+}
+
+
+def http_error_payload(code: str) -> dict:
+    return {"error": {"code": code, "message": HTTP_MESSAGES[code]}}
+
 
 def error_payload(exc: Exception) -> dict:
     if not isinstance(exc, ToolInputError) or exc.code not in MESSAGES:

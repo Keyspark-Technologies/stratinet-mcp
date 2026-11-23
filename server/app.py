@@ -29,9 +29,10 @@ class PublicTool:
 
 
 class StratinetServer(MCPServer):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, tool_timeout_seconds: float = 30.0, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._public_tools: dict[str, PublicTool] = {}
+        self._tool_timeout_seconds = tool_timeout_seconds
 
     def add_public_tool(
         self, name: str, description: str, input_schema: Mapping[str, Any], handler: Handler
@@ -53,10 +54,16 @@ class StratinetServer(MCPServer):
         if tool is None:
             raise MCPError(INVALID_PARAMS, "Unknown tool")
         try:
-            payload = await asyncio.to_thread(tool.handler, dict(arguments or {}))
+            payload = await asyncio.wait_for(
+                asyncio.to_thread(tool.handler, dict(arguments or {})),
+                self._tool_timeout_seconds,
+            )
             assert_no_internal_markers(payload, check_private_ips=False)
             return _result(payload, is_error=False)
         except ToolInputError as exc:
+            payload = error_payload(exc)
+        except TimeoutError as exc:
+            logger.error("tool %r timed out after %ss", name, self._tool_timeout_seconds)
             payload = error_payload(exc)
         except Exception as exc:
             logger.error(

@@ -47,3 +47,8 @@ tests/test_public_verdict_mapping.py
 tests/test_feature_facts.py
 tests/test_project.py
 tests/test_advisory_exposure.py
+tests/test_gateway.py
+tests/test_limits.py
+tests/test_auth_settings.py
+tests/test_timeouts.py
+tests/test_hardening.py

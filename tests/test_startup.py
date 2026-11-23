@@ -43,6 +43,7 @@ def test_main_exits_before_serving_when_a_check_fails(monkeypatch):
     def fail(root):
         raise RuntimeError("no current generation")
 
+    monkeypatch.setenv("AUTH_MODE", "disabled")
     monkeypatch.setattr(startup, "CHECKS", (("corpus generation", fail),))
     monkeypatch.setattr(main.uvicorn, "run", lambda *a, **k: pytest.fail("server started"))
 

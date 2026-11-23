@@ -26,6 +26,8 @@ DESCRIPTION = (
 
 MAX_CONFIG_BYTES = 256 * 1024
 MAX_HARDWARE_MODEL_BYTES = 128
+MAX_VERSION_BYTES = 64
+MAX_CVE_ID_BYTES = 64
 MAX_SINGLE_BYTES = 8 * 1024
 MAX_LIST_BYTES = 64 * 1024
 MAX_FINDINGS = 25
@@ -132,8 +134,10 @@ def _read_input(arguments: dict) -> dict:
         optional=("cve_id", "hardware_model", "running_config", "feature_facts"),
     )
     vendor = check_enum(arguments["vendor"], SUPPORTED_VENDORS, "vendor")
-    version = _string(arguments, "version")
-    cve_id = _string(arguments, "cve_id")
+    version = check_size(_string(arguments, "version"), MAX_VERSION_BYTES, "version")
+    if version is None:
+        raise ToolInputError("invalid_value", field="version")
+    cve_id = check_size(_string(arguments, "cve_id"), MAX_CVE_ID_BYTES, "cve_id")
     if cve_id is not None:
         cve_id = cve_id.strip().upper()
         if not CVE_ID.match(cve_id):
