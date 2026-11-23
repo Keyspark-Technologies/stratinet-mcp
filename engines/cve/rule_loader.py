@@ -9,7 +9,7 @@ RULES_PATH = Path(__file__).resolve().parents[1] / "rules" / "detectors.toml"
 ABSENCE_MODES = ("clear", "detect", "proof")
 
 _NON_VENDOR_KEYS = ("label", "absence_means", "vulnerable_commands", "fixtures",
-                    "provenance", "absent_when", "hardened_when")
+                    "provenance", "absent_when", "hardened_when", "default_on")
 
 
 class RuleFileError(ValueError):
@@ -58,6 +58,27 @@ def _validate_feature(fid: str, spec: dict) -> None:
         if vend not in detectors:
             _fail(fid, f"hardened_when for {vend!r} has no matching detector — without one there "
                        f"is no scope test, so every device would read as exposed")
+
+    default_on = spec.get("default_on") or {}
+    if not isinstance(default_on, dict):
+        _fail(fid, "default_on must be a table of vendor entries")
+    for vend, entry in default_on.items():
+        if not isinstance(entry, dict):
+            _fail(fid, f"default_on for {vend!r} must be a table with enabled, quote and url")
+        if vend not in detectors:
+            _fail(fid, f"default_on for {vend!r} has no matching detector")
+        if not isinstance(entry.get("enabled"), bool):
+            _fail(fid, f"default_on for {vend!r} needs enabled = true or false")
+        quote = entry.get("quote")
+        if not isinstance(quote, str) or not quote.strip():
+            _fail(fid, f"default_on for {vend!r} has no vendor quote — an uncited default is a "
+                       f"guess")
+        url = entry.get("url")
+        if not isinstance(url, str) or not re.fullmatch(r"https://\S+", url.strip()):
+            _fail(fid, f"default_on for {vend!r} needs an https vendor documentation url")
+        unknown = sorted(set(entry) - {"enabled", "quote", "url"})
+        if unknown:
+            _fail(fid, f"default_on for {vend!r} has unknown keys {unknown}")
 
     if mode == "proof":
         if not absent_when:
@@ -117,6 +138,11 @@ def load_rules(path: Path | None = None) -> tuple[dict, dict]:
             "hardened_when": spec.get("hardened_when") or {},
             "provenance": spec.get("provenance") or {},
             "fixtures": spec.get("fixtures") or {},
+            "default_on": {
+                vend: {"enabled": entry["enabled"], "quote": entry["quote"].strip(),
+                       "url": entry["url"].strip()}
+                for vend, entry in (spec.get("default_on") or {}).items()
+            },
         }
         for vend, rx in (spec.get("detectors") or {}).items():
             if vend in _NON_VENDOR_KEYS:

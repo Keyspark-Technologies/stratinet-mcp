@@ -1,5 +1,8 @@
 import logging
 import sys
+import tomllib
+from functools import cache
+from pathlib import Path
 
 import uvicorn
 from mcp.server.transport_security import TransportSecuritySettings
@@ -22,14 +25,23 @@ logger = logging.getLogger(__name__)
 
 MAX_REQUEST_BODY_BYTES = 1024 * 1024
 
+PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
+
 QUIET_LOGGERS = ("boto3", "botocore", "urllib3")
 
 TOOL_MODULES = (translate_diagnostic, troubleshoot_start, advisory_exposure, troubleshoot_analyze)
 
 
+@cache
+def server_version() -> str:
+    with PYPROJECT.open("rb") as handle:
+        return tomllib.load(handle)["project"]["version"]
+
+
 def build_server(settings: Settings) -> StratinetServer:
     mcp = StratinetServer(
         "mcp-server",
+        version=server_version(),
         log_level=settings.log_level,
         tool_timeout_seconds=settings.tool_timeout_seconds,
     )

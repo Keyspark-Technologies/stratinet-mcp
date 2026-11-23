@@ -348,10 +348,15 @@ _MONTHS = {m: i + 1 for i, m in enumerate(
     ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))}
 
 
+_YEARLESS = 2000
+_YEARLESS_SPAN_DAYS = 183
+_DATED_TS = re.compile(r"^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2}):(\d{2})")
+
+
 def _syslog_dt(ts: str):
-    from datetime import datetime, timedelta
+    from datetime import datetime
     raw = (ts or "").strip()
-    if (iso := re.match(r"^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2}):(\d{2})", raw)):
+    if (iso := _DATED_TS.match(raw)):
         try:
             return datetime(*(int(g) for g in iso.groups()))
         except ValueError:
@@ -362,26 +367,37 @@ def _syslog_dt(ts: str):
     mon = _MONTHS.get(m.group(1).lower())
     if not mon:
         return None
-    now = datetime.now()
     try:
-        when = datetime(now.year, mon, int(m.group(2)), int(m.group(3)),
+        return datetime(_YEARLESS, mon, int(m.group(2)), int(m.group(3)),
                         int(m.group(4)), int(m.group(5)))
     except ValueError:
         return None
-    if when - now > timedelta(days=1):
-        when = when.replace(year=now.year - 1)
-    return when
+
+
+def _has_year(ts: str) -> bool:
+    return bool(_DATED_TS.match((ts or "").strip()))
 
 
 def _log_age_minutes(ts: str, reference=None) -> float | None:
     when = _syslog_dt(ts)
-    if when is None:
+    if when is None or reference is None:
         return None
-    if reference is None:
-        from datetime import datetime
-        reference = datetime.now()
-    now = reference
-    return (now - when).total_seconds() / 60.0
+    return (reference - when).total_seconds() / 60.0
+
+
+def _age_references(records: list[dict]) -> dict:
+    from datetime import timedelta
+    refs = {}
+    for dated in (True, False):
+        stamps = [dt for r in records
+                  if _has_year(r.get("timestamp")) is dated
+                  and (dt := _syslog_dt(r.get("timestamp")))]
+        if not stamps:
+            continue
+        if not dated and max(stamps) - min(stamps) > timedelta(days=_YEARLESS_SPAN_DAYS):
+            continue
+        refs[dated] = max(stamps)
+    return refs
 
 
 def parse_logs(text: str) -> list[dict]:
@@ -436,10 +452,10 @@ def parse_logs(text: str) -> list[dict]:
                     "_raw": kv,
                     "_line": line,
                 })
-    stamps = [dt for dt in (_syslog_dt(r.get("timestamp")) for r in out) if dt]
-    ref = max(stamps) if stamps else None
+    refs = _age_references(out)
     for r in out:
-        age = _log_age_minutes(r.get("timestamp"), reference=ref)
+        ts = r.get("timestamp")
+        age = _log_age_minutes(ts, reference=refs.get(_has_year(ts)))
         r["age_minutes"] = f"{age:.1f}" if age is not None else ""
     return out
 

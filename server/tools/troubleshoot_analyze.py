@@ -13,7 +13,7 @@ from common.validate import (
 )
 from engines.triage import catalog, findings, select, signals
 from engines.triage.extract import ERROR, NOT_CONFIGURED, OK_EMPTY, UNLICENSED, UNPARSEABLE
-from engines.triage.triage import NOTHING_PROVABLE, _fill, _signal_means, triage
+from engines.triage.triage import NOTHING_PROVABLE, _signal_means, triage
 from engines.triage.triage_readonly import _is_read_only
 from server.data import data_version
 from server.tools.troubleshoot_start import (
@@ -21,6 +21,7 @@ from server.tools.troubleshoot_start import (
     _context,
     _issues,
     ordered_checks,
+    render,
     resolve_symptom,
 )
 
@@ -67,8 +68,10 @@ DESCRIPTION = (
     "local or the peer device. Returns root_cause with the proving line, need_more_evidence "
     "with the strongest reading so far and up to 3 commands to run next, or cannot_determine "
     "with what would settle it. Outputs that could not be read are listed in unread and never "
-    "count as health. Vendors: " + ", ".join(VENDORS) + ". Set evidence_complete when the device "
-    "cannot be reached again; the answer then says which checks were missing."
+    "count as health. A next command that still holds a {placeholder} lists it in placeholders, "
+    "with the context field that fills it or null when the value must be typed in by hand. "
+    "Vendors: " + ", ".join(VENDORS) + ". Set evidence_complete when the device cannot be "
+    "reached again; the answer then says which checks were missing."
 )
 
 SCHEMA = {
@@ -285,15 +288,17 @@ def _steps(issue: str) -> dict[str, dict]:
     return steps
 
 
-def _command(cat: catalog.Catalog, capability: str, vendor: str, params: dict) -> str | None:
+def _command(
+    cat: catalog.Catalog, capability: str, vendor: str, params: dict
+) -> tuple[str | None, list[dict]]:
     command = cat.command_for(capability, vendor)
     if command is None:
-        return None
-    text, _missing = _fill(command.command, params, set(command.params))
+        return None, []
+    text, placeholders = render(command.command, command.params, params)
     is_check = (cat.capabilities.get(capability) or {}).get("kind") == "check"
     if not is_check or not _is_read_only(command.command) or not _is_read_only(text):
-        return None
-    return text
+        return None, []
+    return text, placeholders
 
 
 def _why(cat: catalog.Catalog, steps: dict[str, dict], capability: str) -> str:
@@ -317,15 +322,19 @@ def _need(
     params = result.get("params") or {}
     steps = _steps(issue)
 
-    def add(command: str | None, why: str) -> None:
+    def add(rendered: tuple[str | None, list[dict]], why: str) -> None:
+        command, placeholders = rendered
         if command and command not in seen and len(rows) < MAX_NEED:
             seen.add(command)
-            rows.append({"command": command, "why": why})
+            row = {"command": command, "why": why}
+            if placeholders:
+                row["placeholders"] = placeholders
+            rows.append(row)
 
     step = result.get("next") or {}
     if step and "menu" not in step and _is_read_only(step.get("command") or ""):
         why = PEER_WHY if step.get("origin") == "peer" else FAR_END_WHY
-        add(step.get("command"), why.format(capability=step.get("capability") or ""))
+        add((step.get("command"), []), why.format(capability=step.get("capability") or ""))
     menu = sorted(step.get("menu") or [], key=lambda c: c not in prefer)
     deferred = [d["capability"] for d in result.get("deferred") or []]
     for capability in menu + deferred:

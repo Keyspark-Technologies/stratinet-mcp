@@ -114,15 +114,19 @@ def rule_facts(cve_id: str, vendor: str, features: dict, cve_rules: dict) -> Rul
         level = READABLE_SOME
     else:
         level = READABLE_NONE
-    default_on = any(_cited_default_on(features.get(f) or {}, detector_key) for f in ids)
+    default_on = default_on_source(ids, detector_key, features) is not None
     return RuleFacts(True, False, level, default_on, ids)
 
 
-def _cited_default_on(feature: dict, detector_key: str) -> bool:
-    entry = (feature.get("default_on") or {}).get(detector_key)
-    if not isinstance(entry, dict):
-        return False
-    return bool(entry.get("enabled")) and bool(entry.get("quote")) and bool(entry.get("url"))
+def default_on_source(ids, detector_key: str, features: dict) -> tuple[str, dict] | None:
+    for fid in ids:
+        entry = ((features.get(fid) or {}).get("default_on") or {}).get(detector_key)
+        if not isinstance(entry, dict) or entry.get("enabled") is not True:
+            continue
+        quote, url = entry.get("quote"), entry.get("url")
+        if isinstance(quote, str) and quote.strip() and isinstance(url, str) and url.strip():
+            return fid, {"quote": quote, "url": url}
+    return None
 
 
 def _invalid_fact() -> ToolInputError:

@@ -1,9 +1,9 @@
 files:
   - dest: engines/cve/rule_loader.py
-    sha256: 33a1a14604c0b20ca043c2ff0d28158739f583db41ba50a10fa2cc45a4937fda
+    sha256: 7a1535cc2f9e5ce9db0eefe46e35180647b486aea9c2511ed9de7ddf430634cf
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 1b04c5f28817971b2901eb47fc65cf82914e37ba37508e7979cdbb0364467fb6
-    local_edit: "comments and docstrings removed"
+    local_edit: "comments and docstrings removed; per-vendor default_on validated (enabled, vendor quote, https url, matching detector) and carried through load_rules"
   - dest: engines/cve/version_match.py
     sha256: 72df588c9b68baaa59b3647387ca3b896ae86370538f1c588d1d0ced5f2bc9cd
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
@@ -15,10 +15,10 @@ files:
     upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
     local_edit: "internal device name replaced in a comment; comments and docstrings removed"
   - dest: engines/triage/extract.py
-    sha256: fe94cf041235b7a45d2e24de783f6800efb1ecd9622165037f3b05b5b93b135b
+    sha256: b81a7b53ed479878b9759fbea14045389798a7ae6b7704b05317e73a1c59cf6f
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: c792df1e71fcd7fc5d7fd07f7a552d028404721f803b9bfbe63a1f098ec3104b
-    local_edit: "model layer removed (extract_with_model and the model constant); extract_layered is deterministic only; internal device names replaced in comments; comments and docstrings removed"
+    local_edit: "model layer removed (extract_with_model and the model constant); extract_layered is deterministic only; internal device names replaced in comments; comments and docstrings removed; log ages read from the paste alone (no wall clock): yearless stamps measured against the latest yearless stamp, age left unknown when they span more than half a year"
   - dest: engines/triage/findings.py
     sha256: 4ab5d34e4dba6f34d4bfdeaa1af39c601a92c6014342c54c0ebf9d69aad733d3
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
