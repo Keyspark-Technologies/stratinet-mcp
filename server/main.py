@@ -9,6 +9,7 @@ from starlette.responses import JSONResponse
 
 from server import startup
 from server.app import StratinetServer
+from server.gateway import DynamoKeyStore, Gateway, KeyStore
 from server.settings import Settings, SettingsError
 from server.tools import (
     advisory_exposure,
@@ -21,11 +22,17 @@ logger = logging.getLogger(__name__)
 
 MAX_REQUEST_BODY_BYTES = 1024 * 1024
 
+QUIET_LOGGERS = ("boto3", "botocore", "urllib3")
+
 TOOL_MODULES = (translate_diagnostic, troubleshoot_start, advisory_exposure, troubleshoot_analyze)
 
 
 def build_server(settings: Settings) -> StratinetServer:
-    mcp = StratinetServer("mcp-server", log_level=settings.log_level)
+    mcp = StratinetServer(
+        "mcp-server",
+        log_level=settings.log_level,
+        tool_timeout_seconds=settings.tool_timeout_seconds,
+    )
     for module in TOOL_MODULES:
         module.register(mcp)
 
@@ -36,8 +43,10 @@ def build_server(settings: Settings) -> StratinetServer:
     return mcp
 
 
-def build_app(settings: Settings, mcp: StratinetServer | None = None) -> Starlette:
-    return (mcp or build_server(settings)).streamable_http_app(
+def build_app(
+    settings: Settings, mcp: StratinetServer | None = None, store: KeyStore | None = None
+) -> Starlette:
+    app = (mcp or build_server(settings)).streamable_http_app(
         stateless_http=True,
         json_response=True,
         max_request_body_size=MAX_REQUEST_BODY_BYTES,
@@ -47,6 +56,11 @@ def build_app(settings: Settings, mcp: StratinetServer | None = None) -> Starlet
             allowed_origins=[],
         ),
     )
+    if settings.auth is not None:
+        app.add_middleware(
+            Gateway, auth=settings.auth, store=store or DynamoKeyStore(settings.auth)
+        )
+    return app
 
 
 def main() -> None:
@@ -59,6 +73,8 @@ def main() -> None:
     logging.basicConfig(
         level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s"
     )
+    for name in QUIET_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     try:
         startup.run()
     except startup.StartupError as exc:

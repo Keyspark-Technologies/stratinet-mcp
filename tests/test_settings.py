@@ -4,15 +4,24 @@ from server.settings import Settings, SettingsError
 
 
 def test_defaults_when_nothing_is_set():
-    s = Settings.from_env({})
-    assert s == Settings(port=8000, log_level="INFO", allowed_hosts=("localhost:*", "127.0.0.1:*"))
+    s = Settings.from_env({"AUTH_MODE": "disabled"})
+    assert s == Settings(
+        port=8000, log_level="INFO", allowed_hosts=("localhost:*", "127.0.0.1:*"), auth=None
+    )
 
 
 def test_reads_named_variables():
     s = Settings.from_env(
-        {"PORT": "9000", "LOG_LEVEL": "debug", "ALLOWED_HOSTS": " mcp.example.com , a:* "}
+        {
+            "PORT": "9000",
+            "LOG_LEVEL": "debug",
+            "ALLOWED_HOSTS": " mcp.example.com , a:* ",
+            "AUTH_MODE": "disabled",
+        }
     )
-    assert s == Settings(port=9000, log_level="DEBUG", allowed_hosts=("mcp.example.com", "a:*"))
+    assert s == Settings(
+        port=9000, log_level="DEBUG", allowed_hosts=("mcp.example.com", "a:*"), auth=None
+    )
 
 
 @pytest.mark.parametrize(

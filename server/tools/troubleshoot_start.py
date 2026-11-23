@@ -1,8 +1,8 @@
 import ipaddress
-import json
 import re
 from typing import Any
 
+from common.project import fit
 from common.validate import ToolInputError, check_fields, check_size
 from engines.triage import catalog, loaders, select, signals, symptoms
 from engines.triage.triage import _clause_order, _fill
@@ -209,7 +209,8 @@ def troubleshoot_start(arguments: dict[str, Any]) -> dict[str, Any]:
 
     common = {"basis": BASIS, "data_version": data_version(corpus=False)}
     if not checks:
-        return {"status": "no_commands_for_vendor", "issue": issue, "vendor": vendor, **common}
+        answer = {"status": "no_commands_for_vendor", "issue": issue, "vendor": vendor, **common}
+        return fit(answer, MAX_RESPONSE_BYTES, ())
     answer = {
         "status": "checks",
         "issue": issue,
@@ -219,9 +220,7 @@ def troubleshoot_start(arguments: dict[str, Any]) -> dict[str, Any]:
         "note": _note(total - readable, missing_command, refused, over_cap),
         **common,
     }
-    if len(json.dumps(answer, ensure_ascii=False).encode("utf-8")) > MAX_RESPONSE_BYTES:
-        raise ValueError("the check list exceeds the response cap")
-    return answer
+    return fit(answer, MAX_RESPONSE_BYTES, ("checks",))
 
 
 def register(mcp) -> None:

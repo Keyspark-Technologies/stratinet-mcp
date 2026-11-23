@@ -43,7 +43,9 @@ def anyio_backend():
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(port=0, log_level="INFO", allowed_hosts=("localhost:*", "127.0.0.1:*"))
+    return Settings(
+        port=0, log_level="INFO", allowed_hosts=("localhost:*", "127.0.0.1:*"), auth=None
+    )
 
 
 @pytest.fixture

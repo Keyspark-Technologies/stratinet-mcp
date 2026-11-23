@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Public MCP server: advisory exposure and network troubleshooting."
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "boto3",
     "mcp==2.2.0",
     "ntc-templates",
     "psycopg[binary]",

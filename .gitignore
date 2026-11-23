@@ -49,3 +49,8 @@ tests/test_project.py
 tests/test_advisory_exposure.py
 tests/test_symptoms.py
 tests/test_troubleshoot_analyze.py
+tests/test_gateway.py
+tests/test_limits.py
+tests/test_auth_settings.py
+tests/test_timeouts.py
+tests/test_hardening.py

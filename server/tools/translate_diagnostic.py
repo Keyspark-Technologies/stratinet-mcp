@@ -1,6 +1,6 @@
-import json
 from typing import Any
 
+from common.project import fit
 from common.validate import ToolInputError, check_fields, check_size
 from engines.triage import catalog
 from server.data import data_version
@@ -100,9 +100,7 @@ def translate_diagnostic(arguments: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("translation exceeds the command cap")
     answer["basis"] = BASIS
     answer["data_version"] = data_version(corpus=False)
-    if len(json.dumps(answer, ensure_ascii=False).encode("utf-8")) > MAX_RESPONSE_BYTES:
-        raise ValueError("translation exceeds the response cap")
-    return answer
+    return fit(answer, MAX_RESPONSE_BYTES, ("did_you_mean", "available_for"))
 
 
 def register(mcp) -> None:
