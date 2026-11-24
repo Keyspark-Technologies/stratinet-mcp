@@ -61,3 +61,4 @@ tests/test_placeholders.py
 tests/test_determinism_fixes.py
 tests/test_advisory_review.py
 tests/test_runtime_review.py
+tests/test_review2_runtime.py
