@@ -380,22 +380,22 @@ def _has_year(ts: str) -> bool:
 
 
 def _yearless_years(stamps: list) -> dict | None:
-    from datetime import datetime, timedelta
-    circle = timedelta(days=366)
+    from datetime import timedelta
+    span = timedelta(days=_YEARLESS_SPAN_DAYS)
     order = sorted(set(stamps))
-    start = datetime(_YEARLESS, 1, 1)
-    points = [s - start for s in order]
-    gaps = [(circle - (points[-1] - points[0]), 0)]
-    gaps += [(points[i] - points[i - 1], i) for i in range(1, len(points))]
-    cut = max(gaps, key=lambda g: g[0])[1]
-    try:
-        placed = {s: s.replace(year=_YEARLESS - 1) if cut and i >= cut else s
-                  for i, s in enumerate(order)}
-    except ValueError:
-        return None
-    if max(placed.values()) - min(placed.values()) > timedelta(days=_YEARLESS_SPAN_DAYS):
-        return None
-    return placed
+    for cut in range(len(order)):
+        try:
+            placed = {s: s.replace(year=_YEARLESS - 1) if cut and i >= cut else s
+                      for i, s in enumerate(order)}
+        except ValueError:
+            continue
+        if max(placed.values()) - min(placed.values()) > span:
+            continue
+        seen = [placed[s] for s in stamps]
+        if cut and any(later < earlier for earlier, later in zip(seen, seen[1:])):
+            continue
+        return placed
+    return None
 
 
 def _log_ages(records: list[dict]) -> dict:
@@ -1101,10 +1101,15 @@ def extract(vendor: str, command: str, output: str, shape: str,
                      if r.get("age_minutes")
                      and float(r["age_minutes"]) <= log_window_minutes]
             unplaced = sum(1 for r in recs if not r.get("age_minutes"))
-            if recs and not fresh and unplaced:
+            if recs and not fresh and unplaced == len(recs):
                 return {"status": UNPARSEABLE, "records": [], "source": LOG_AGE_UNKNOWN,
                         "evidence": f"{unplaced} log line(s) read whose time cannot be "
                                     "placed; none is taken as recent"}
+            if recs and not fresh and unplaced:
+                return {"status": OK_NO_ROWS, "records": [], "source": "log_all_stale",
+                        "evidence": f"{len(recs) - unplaced} log line(s) read older than "
+                                    f"{log_window_minutes:g} minutes and {unplaced} whose "
+                                    "time cannot be placed; none is taken as recent"}
             if recs and not fresh:
                 return {"status": OK_NO_ROWS, "records": [], "source": "log_all_stale",
                         "evidence": f"{len(recs)} log line(s) read, all older than "

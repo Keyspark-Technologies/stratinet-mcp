@@ -72,8 +72,9 @@ RERUN_HEALTHY = (
     "is occurring"
 )
 SETTLE_UNCATALOGUED = (
-    "no read-only command is catalogued on {vendor} for {count} remaining check(s) of this "
-    "symptom, so this tool cannot name or read them: {checks}"
+    "no read-only check command is available on {vendor} for {count} remaining check(s) of "
+    "this symptom, so this tool cannot name or read them; the first {listed} of {count}: "
+    "{checks}"
 )
 SETTLE_UNREAD = (
     "{count} output(s) listed in unread gave no usable reading, and no catalogued read-only "
@@ -378,9 +379,12 @@ def _settle(issue: str, vendor: str, cat: catalog.Catalog, ran: set[str], unread
     remaining = [c for c in ordered_checks(issue) if c not in ran]
     settle = []
     if remaining:
-        checks = "; ".join(_why(cat, steps, c) for c in remaining[:MAX_NEED])
+        listed = remaining[:MAX_NEED]
+        checks = "; ".join(_why(cat, steps, c) for c in listed)
         settle.append(
-            SETTLE_UNCATALOGUED.format(vendor=vendor, count=len(remaining), checks=checks)
+            SETTLE_UNCATALOGUED.format(
+                vendor=vendor, count=len(remaining), listed=len(listed), checks=checks
+            )
         )
     if unread:
         settle.append(SETTLE_UNREAD.format(count=unread, vendor=vendor))

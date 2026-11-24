@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import hashlib
 import json
 import logging
@@ -172,7 +173,9 @@ class Gateway:
         return active
 
     async def _off_loop(self, call: Callable, *args: Any) -> Any:
-        return await asyncio.get_running_loop().run_in_executor(self._executor, call, *args)
+        return await asyncio.get_running_loop().run_in_executor(
+            self._executor, contextvars.copy_context().run, call, *args
+        )
 
     def _count(self, key_hash: str) -> int | None:
         now = self.clock()
