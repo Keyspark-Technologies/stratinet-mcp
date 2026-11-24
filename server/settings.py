@@ -7,6 +7,7 @@ LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 AUTH_MODES = ("api_key", "disabled")
 MAX_KEY_CACHE_SECONDS = 60
 MAX_TOOL_TIMEOUT_SECONDS = 600
+MAX_TOOL_WORKERS = 64
 TABLE_NAME = re.compile(r"[A-Za-z0-9_.-]{3,255}")
 REGION = re.compile(r"[a-z]{2}(-[a-z]+)+-[0-9]{1,2}")
 SECONDS = re.compile(r"[0-9]{1,6}(\.[0-9]{1,3})?")
@@ -34,6 +35,7 @@ class Settings:
     allowed_hosts: tuple[str, ...]
     auth: AuthSettings | None
     tool_timeout_seconds: float = 30.0
+    tool_workers: int = 4
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] = os.environ) -> "Settings":
@@ -43,6 +45,7 @@ class Settings:
             allowed_hosts=_allowed_hosts(env.get("ALLOWED_HOSTS", "localhost:*,127.0.0.1:*")),
             auth=_auth(env),
             tool_timeout_seconds=_timeout(env.get("TOOL_TIMEOUT_SECONDS", "30")),
+            tool_workers=_workers(env.get("TOOL_WORKERS", "4")),
         )
 
 
@@ -123,3 +126,10 @@ def _timeout(raw: str) -> float:
             f"TOOL_TIMEOUT_SECONDS must be a number above 0 and at most {MAX_TOOL_TIMEOUT_SECONDS}"
         )
     return float(raw)
+
+
+def _workers(raw: str) -> int:
+    raw = raw.strip()
+    if not WHOLE.fullmatch(raw) or not 1 <= int(raw) <= MAX_TOOL_WORKERS:
+        raise SettingsError(f"TOOL_WORKERS must be a number from 1 to {MAX_TOOL_WORKERS}")
+    return int(raw)

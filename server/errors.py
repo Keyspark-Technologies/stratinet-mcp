@@ -10,6 +10,7 @@ MESSAGES = {
     "malformed_cve_id": "The CVE id is not in the form CVE-YYYY-NNNN.",
     "invalid_feature_fact": "A feature fact does not apply to this feature on this vendor.",
     "internal_error": "The tool could not complete this request.",
+    "busy": "The server is busy with other requests. Try again shortly.",
 }
 
 HTTP_MESSAGES = {
@@ -23,7 +24,13 @@ def http_error_payload(code: str) -> dict:
     return {"error": {"code": code, "message": HTTP_MESSAGES[code]}}
 
 
+class ServerBusy(Exception):
+    pass
+
+
 def error_payload(exc: Exception) -> dict:
+    if isinstance(exc, ServerBusy):
+        return {"error": {"code": "busy", "message": MESSAGES["busy"]}}
     if not isinstance(exc, ToolInputError) or exc.code not in MESSAGES:
         return {"error": {"code": "internal_error", "message": MESSAGES["internal_error"]}}
     error: dict = {"code": exc.code, "message": MESSAGES[exc.code]}

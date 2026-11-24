@@ -117,6 +117,7 @@ verdict.
 | `malformed_cve_id` | The CVE id is not in the form `CVE-YYYY-NNNN`. |
 | `invalid_feature_fact` | A feature fact does not apply to this feature on this vendor. |
 | `internal_error` | The tool could not complete this request, including when it took too long. No detail is returned. |
+| `busy` | Every tool worker is in use. Nothing was run; try the call again shortly. |
 
 ## Running it yourself / development
 
@@ -146,6 +147,7 @@ read-only.
 | `RATE_LIMIT_PER_DAY` | `5000` | Calls per key per day; must be at least the per-minute limit. |
 | `API_KEY_CACHE_SECONDS` | `60` | How long a key check is cached, `0` to `60`. |
 | `TOOL_TIMEOUT_SECONDS` | `30` | Time limit for one tool call, up to `600`. |
+| `TOOL_WORKERS` | `4` | Tool calls that may run at once, `1` to `64`. A call that arrives when all are in use, including calls still running past their time limit, gets `busy` at once. |
 | `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` | — | Standard PostgreSQL connection variables for the advisory database. |
 
 [example.env](example.env) has the local defaults. The `Dockerfile` builds a runtime image

@@ -44,6 +44,7 @@ def build_server(settings: Settings) -> StratinetServer:
         version=server_version(),
         log_level=settings.log_level,
         tool_timeout_seconds=settings.tool_timeout_seconds,
+        tool_workers=settings.tool_workers,
     )
     for module in TOOL_MODULES:
         module.register(mcp)

@@ -15,10 +15,10 @@ files:
     upstream_sha256: 46092a17b0d272557362246d597c88f3d13d25d3a82fe9dc52c7b3298530a4f2
     local_edit: "internal device name replaced in a comment; comments and docstrings removed"
   - dest: engines/triage/extract.py
-    sha256: b81a7b53ed479878b9759fbea14045389798a7ae6b7704b05317e73a1c59cf6f
+    sha256: c2840bfbcbdf0e9864484ff85233e61066b01cf1fefe24528e5dcff188fcd6c5
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: c792df1e71fcd7fc5d7fd07f7a552d028404721f803b9bfbe63a1f098ec3104b
-    local_edit: "model layer removed (extract_with_model and the model constant); extract_layered is deterministic only; internal device names replaced in comments; comments and docstrings removed; log ages read from the paste alone (no wall clock): yearless stamps measured against the latest yearless stamp, age left unknown when they span more than half a year"
+    local_edit: "model layer removed (extract_with_model and the model constant); extract_layered is deterministic only; internal device names replaced in comments; comments and docstrings removed; log ages read from the paste alone (no wall clock): yearless stamps measured against the latest yearless stamp, age left unknown when they span more than half a year; yearless stamps placed on a year circle with the year boundary in the largest gap, so a paste that crosses New Year keeps its ages; log lines whose age is unknown are never kept as recent evidence"
   - dest: engines/triage/findings.py
     sha256: 4ab5d34e4dba6f34d4bfdeaa1af39c601a92c6014342c54c0ebf9d69aad733d3
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd

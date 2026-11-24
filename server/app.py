@@ -1,8 +1,11 @@
 import asyncio
+import contextvars
 import json
 import logging
+import threading
 import traceback
 from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -13,7 +16,7 @@ from mcp.types import Tool as MCPTool
 
 from common.redact import assert_no_internal_markers
 from common.validate import ToolInputError
-from server.errors import error_payload
+from server.errors import ServerBusy, error_payload
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +32,19 @@ class PublicTool:
 
 
 class StratinetServer(MCPServer):
-    def __init__(self, *args: Any, tool_timeout_seconds: float = 30.0, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        tool_timeout_seconds: float = 30.0,
+        tool_workers: int = 4,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._public_tools: dict[str, PublicTool] = {}
         self._tool_timeout_seconds = tool_timeout_seconds
+        self._tool_workers = tool_workers
+        self._tool_slots = threading.BoundedSemaphore(tool_workers)
+        self._tool_executor = ThreadPoolExecutor(tool_workers, thread_name_prefix="tool")
 
     def add_public_tool(
         self, name: str, description: str, input_schema: Mapping[str, Any], handler: Handler
@@ -55,12 +67,17 @@ class StratinetServer(MCPServer):
             raise MCPError(INVALID_PARAMS, "Unknown tool")
         try:
             payload = await asyncio.wait_for(
-                asyncio.to_thread(tool.handler, dict(arguments or {})),
+                self._run(tool.handler, dict(arguments or {})),
                 self._tool_timeout_seconds,
             )
             assert_no_internal_markers(payload, check_private_ips=False)
             return _result(payload, is_error=False)
         except ToolInputError as exc:
+            payload = error_payload(exc)
+        except ServerBusy as exc:
+            logger.warning(
+                "tool %r refused: all %s tool workers are busy", name, self._tool_workers
+            )
             payload = error_payload(exc)
         except TimeoutError as exc:
             logger.error("tool %r timed out after %ss", name, self._tool_timeout_seconds)
@@ -75,6 +92,17 @@ class StratinetServer(MCPServer):
             payload = error_payload(exc)
         assert_no_internal_markers(payload)
         return _result(payload, is_error=True)
+
+    def _run(self, handler: Handler, arguments: dict[str, Any]) -> asyncio.Future:
+        if not self._tool_slots.acquire(blocking=False):
+            raise ServerBusy
+        try:
+            future = self._tool_executor.submit(contextvars.copy_context().run, handler, arguments)
+        except BaseException:
+            self._tool_slots.release()
+            raise
+        future.add_done_callback(lambda _: self._tool_slots.release())
+        return asyncio.wrap_future(future)
 
 
 def _result(payload: dict[str, Any], *, is_error: bool) -> CallToolResult:
