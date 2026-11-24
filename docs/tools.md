@@ -287,12 +287,15 @@ Notes on the inputs:
 | `status` | Meaning | Also carries |
 |---|---|---|
 | `root_cause` | The output proves a cause. | `finding{cause, means, explanation, evidence{command, line}, symptoms, also_found, basis}` |
-| `need_more_evidence` | There is a leading reading, but it is not proven yet. | `leading_finding{cause, line, note}` and `need` — up to 3 `{command, why}` rows to run next |
-| `cannot_determine` | Nothing is provable from this output. This is not the same as the device being healthy. | `reason` and a non-empty `need` |
+| `need_more_evidence` | There is a leading reading, but it is not proven yet. | `leading_finding{cause, line, note}` and `need` — up to 3 `{command, why}` rows to run next; when none can be named, `need` is empty and `what_would_settle_it` says what is missing |
+| `cannot_determine` | Nothing is provable from this output. This is not the same as the device being healthy. | `reason` and `need`; when no next command can be named, `need` is empty and `what_would_settle_it` says what is missing |
 
 Every status also carries `read` (up to 12 `{command, read_as, line}` rows: what was read from the
 output) and `unread` (`{command, why}` for every output that could not be read). Output in
-`unread` never counts as evidence of health. Quoted lines are at most 400 characters.
+`unread` never counts as evidence of health. Log lines are aged against the latest line of the
+same paste; a line whose time cannot be placed, such as one in a paste of year-less stamps that
+spans more than half a year, is never taken as a current fault. Quoted lines are at most 400
+characters.
 
 Caps: 8 outputs, 64 KB each, 256 KB in total; answer at most 16 KB. When the answer must be
 shortened, `read` rows go first, then `also_found`, then `symptoms`; the verdict, the evidence line
@@ -336,7 +339,8 @@ A rejected input returns `isError: true` and a body like:
 | `troubleshoot_analyze` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `unsupported_symptom` |
 
 Any tool can also return `internal_error`, with no detail, when it cannot complete a request or
-runs out of time. What each code means, and the HTTP-level errors for a missing key or a rate
+runs out of time, and `busy` when every tool worker is in use; nothing was run, so the call can be
+sent again shortly. What each code means, and the HTTP-level errors for a missing key or a rate
 limit, are listed in the [README](../README.md#errors).
 
 Calling a tool name that does not exist returns a JSON-RPC error (`-32602`, `Unknown tool`)

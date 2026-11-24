@@ -12,7 +12,14 @@ from common.validate import (
     check_size,
 )
 from engines.triage import catalog, findings, select, signals
-from engines.triage.extract import ERROR, NOT_CONFIGURED, OK_EMPTY, UNLICENSED, UNPARSEABLE
+from engines.triage.extract import (
+    ERROR,
+    LOG_AGE_UNKNOWN,
+    NOT_CONFIGURED,
+    OK_EMPTY,
+    UNLICENSED,
+    UNPARSEABLE,
+)
 from engines.triage.triage import NOTHING_PROVABLE, _signal_means, triage
 from engines.triage.triage_readonly import _is_read_only
 from server.data import data_version
@@ -50,6 +57,10 @@ UNREADABLE = "the deterministic parsers could not read this output; nothing is t
 NOTHING_TO_READ = "the output holds nothing to read; it is not read as health"
 DEVICE_SAID = "device returned '{line}' — no state to read from it"
 NO_RULE_MATCHED = "the output was parsed but no authored rule matched it; it is not read as health"
+AGE_UNKNOWN = (
+    "the log lines carry no time that can be placed, so none is taken as a current fault; "
+    "paste lines that carry the year or span less than half a year"
+)
 PEER_WHY = (
     "run this on the peer device and pass it with device_role peer: {capability} compares "
     "both ends and only one end has been read"
@@ -59,6 +70,18 @@ RERUN_UNREAD = "the output supplied for this check could not be read; paste the 
 RERUN_HEALTHY = (
     "the output supplied for this check showed no fault; run it again while the problem "
     "is occurring"
+)
+SETTLE_UNCATALOGUED = (
+    "no read-only command is catalogued on {vendor} for {count} remaining check(s) of this "
+    "symptom, so this tool cannot name or read them: {checks}"
+)
+SETTLE_UNREAD = (
+    "{count} output(s) listed in unread gave no usable reading, and no catalogued read-only "
+    "command on {vendor} can re-run the check(s) behind them"
+)
+SETTLE_EXHAUSTED = (
+    "every check catalogued for this symptom on {vendor} has been read without a reading "
+    "that proves a cause, and none can be re-run from the catalogue"
 )
 
 DESCRIPTION = (
@@ -261,6 +284,8 @@ def _unread_why(item: dict, entries: list[dict], vendor: str) -> str:
         return NO_RULE
     first = entries[0]
     status = first.get("status")
+    if first.get("source") == LOG_AGE_UNKNOWN:
+        return AGE_UNKNOWN
     if status in DEVICE_STATUSES and first.get("evidence"):
         return DEVICE_SAID.format(line=first["evidence"])
     if status == UNPARSEABLE:
@@ -346,6 +371,20 @@ def _need(
         for capability in capabilities:
             add(_command(cat, capability, vendor, params), why or _why(cat, steps, capability))
     return rows
+
+
+def _settle(issue: str, vendor: str, cat: catalog.Catalog, ran: set[str], unread: int) -> list:
+    steps = _steps(issue)
+    remaining = [c for c in ordered_checks(issue) if c not in ran]
+    settle = []
+    if remaining:
+        checks = "; ".join(_why(cat, steps, c) for c in remaining[:MAX_NEED])
+        settle.append(
+            SETTLE_UNCATALOGUED.format(vendor=vendor, count=len(remaining), checks=checks)
+        )
+    if unread:
+        settle.append(SETTLE_UNREAD.format(count=unread, vendor=vendor))
+    return settle or [SETTLE_EXHAUSTED.format(vendor=vendor)]
 
 
 def _explanation(cause: str, means: str, root: dict, vendor: str, explained: int) -> str:
@@ -481,8 +520,8 @@ def troubleshoot_analyze(arguments: dict[str, Any]) -> dict[str, Any]:
         answer = {"status": "cannot_determine", "vendor": vendor, "symptom": issue}
         answer["reason"] = NOTHING_PROVABLE
         answer["need"] = _need(*known, frozenset())
-        if not answer["need"]:
-            raise ValueError("cannot_determine needs at least one next command")
+    if answer["status"] != "root_cause" and not answer["need"]:
+        answer["what_would_settle_it"] = _settle(issue, vendor, cat, ran, len(unread_rows))
 
     answer["read"] = read_rows
     answer["unread"] = unread_rows

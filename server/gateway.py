@@ -6,6 +6,7 @@ import re
 import time
 from collections import OrderedDict
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -20,6 +21,7 @@ ACTIVE = "active"
 USAGE_TTL_SECONDS = 2 * 24 * 60 * 60
 LOG_PREFIX_CHARS = 8
 MAX_CACHED_KEYS = 10_000
+GATEWAY_WORKERS = 16
 BEARER = re.compile(r"[Bb][Ee][Aa][Rr][Ee][Rr] ([A-Za-z0-9_-]{16,256})")
 
 
@@ -119,6 +121,7 @@ class Gateway:
             Window("day", 24 * 60 * 60, auth.per_day),
         )
         self._cache: OrderedDict[str, tuple[float, bool]] = OrderedDict()
+        self._executor = ThreadPoolExecutor(GATEWAY_WORKERS, thread_name_prefix="gateway")
 
     async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
         if scope["type"] == "lifespan" or (
@@ -140,7 +143,7 @@ class Gateway:
             active = await self._is_active(key_hash)
             retry_after = None
             if active:
-                retry_after = await asyncio.to_thread(self._count, key_hash)
+                retry_after = await self._off_loop(self._count, key_hash)
         except Exception as exc:
             logger.error("api key check failed for key %s: %s", prefix, type(exc).__name__)
             await _refuse(send, 503, "unavailable")
@@ -160,13 +163,16 @@ class Gateway:
         cached = self._cache.get(key_hash)
         if cached is not None and cached[0] > now:
             return cached[1]
-        active = await asyncio.to_thread(self.store.key_status, key_hash) == ACTIVE
+        active = await self._off_loop(self.store.key_status, key_hash) == ACTIVE
         if self.cache_seconds > 0:
             self._cache[key_hash] = (now + self.cache_seconds, active)
             self._cache.move_to_end(key_hash)
             while len(self._cache) > MAX_CACHED_KEYS:
                 self._cache.popitem(last=False)
         return active
+
+    async def _off_loop(self, call: Callable, *args: Any) -> Any:
+        return await asyncio.get_running_loop().run_in_executor(self._executor, call, *args)
 
     def _count(self, key_hash: str) -> int | None:
         now = self.clock()

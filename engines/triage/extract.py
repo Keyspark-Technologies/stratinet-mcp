@@ -342,6 +342,7 @@ def _event_source(facility: str, message: str) -> str:
 
 
 _LOG_WINDOW_MINUTES = 60
+LOG_AGE_UNKNOWN = "log_age_unknown"
 
 _SYSLOG_TS = re.compile(r"^(\w{3})\s+(\d+)\s+(\d{1,2}):(\d{2}):(\d{2})$")
 _MONTHS = {m: i + 1 for i, m in enumerate(
@@ -378,26 +379,40 @@ def _has_year(ts: str) -> bool:
     return bool(_DATED_TS.match((ts or "").strip()))
 
 
-def _log_age_minutes(ts: str, reference=None) -> float | None:
-    when = _syslog_dt(ts)
-    if when is None or reference is None:
+def _yearless_years(stamps: list) -> dict | None:
+    from datetime import datetime, timedelta
+    circle = timedelta(days=366)
+    order = sorted(set(stamps))
+    start = datetime(_YEARLESS, 1, 1)
+    points = [s - start for s in order]
+    gaps = [(circle - (points[-1] - points[0]), 0)]
+    gaps += [(points[i] - points[i - 1], i) for i in range(1, len(points))]
+    cut = max(gaps, key=lambda g: g[0])[1]
+    try:
+        placed = {s: s.replace(year=_YEARLESS - 1) if cut and i >= cut else s
+                  for i, s in enumerate(order)}
+    except ValueError:
         return None
-    return (reference - when).total_seconds() / 60.0
+    if max(placed.values()) - min(placed.values()) > timedelta(days=_YEARLESS_SPAN_DAYS):
+        return None
+    return placed
 
 
-def _age_references(records: list[dict]) -> dict:
-    from datetime import timedelta
-    refs = {}
+def _log_ages(records: list[dict]) -> dict:
+    ages = {}
     for dated in (True, False):
         stamps = [dt for r in records
                   if _has_year(r.get("timestamp")) is dated
                   and (dt := _syslog_dt(r.get("timestamp")))]
         if not stamps:
             continue
-        if not dated and max(stamps) - min(stamps) > timedelta(days=_YEARLESS_SPAN_DAYS):
+        placed = {s: s for s in stamps} if dated else _yearless_years(stamps)
+        if not placed:
             continue
-        refs[dated] = max(stamps)
-    return refs
+        latest = max(placed.values())
+        for stamp, when in placed.items():
+            ages[(dated, stamp)] = (latest - when).total_seconds() / 60.0
+    return ages
 
 
 def parse_logs(text: str) -> list[dict]:
@@ -452,10 +467,10 @@ def parse_logs(text: str) -> list[dict]:
                     "_raw": kv,
                     "_line": line,
                 })
-    refs = _age_references(out)
+    ages = _log_ages(out)
     for r in out:
         ts = r.get("timestamp")
-        age = _log_age_minutes(ts, reference=refs.get(_has_year(ts)))
+        age = ages.get((_has_year(ts), _syslog_dt(ts)))
         r["age_minutes"] = f"{age:.1f}" if age is not None else ""
     return out
 
@@ -1083,12 +1098,16 @@ def extract(vendor: str, command: str, output: str, shape: str,
         recs = parse_logs(text)
         if log_window_minutes is not None:
             fresh = [r for r in recs
-                     if not r.get("age_minutes")
-                     or float(r["age_minutes"]) <= log_window_minutes]
-            dropped = len(recs) - len(fresh)
-            if dropped and not fresh:
+                     if r.get("age_minutes")
+                     and float(r["age_minutes"]) <= log_window_minutes]
+            unplaced = sum(1 for r in recs if not r.get("age_minutes"))
+            if recs and not fresh and unplaced:
+                return {"status": UNPARSEABLE, "records": [], "source": LOG_AGE_UNKNOWN,
+                        "evidence": f"{unplaced} log line(s) read whose time cannot be "
+                                    "placed; none is taken as recent"}
+            if recs and not fresh:
                 return {"status": OK_NO_ROWS, "records": [], "source": "log_all_stale",
-                        "evidence": f"{dropped} log line(s) read, all older than "
+                        "evidence": f"{len(recs)} log line(s) read, all older than "
                                     f"{log_window_minutes:g} minutes"}
             recs = fresh
         return {"status": OK if recs else OK_EMPTY, "records": recs,
