@@ -31,6 +31,7 @@ _MAX_VERSION_BYTES = 64
 CLEARED_VERSION = "version"
 CLEARED_VENDOR = "vendor_not_affected"
 CLEARED_NOT_THIS_PRODUCT = "not_this_product"
+CLEARED_UNCOVERED = "vendor_statement_other_trains"
 
 _AUTHORITY_FILE = os.path.join("cve", "cve_authority.json")
 
@@ -265,12 +266,12 @@ def _applicable(
         key = (a.advisory_id, a.cve_id)
         st = statuses.get(key) or set()
         cr = clear_ranges.get(key) or []
-        if st == {"not_affected"}:
-            if not cr or matches_any_range(os_version, cr) is True:
-                clear(a, CLEARED_VENDOR, cr)
-                continue
-            a.substantiated = False
-            kept.append(a)
+        stated = st - {""}
+        vendor_only = stated == {"not_affected"} and (
+            st == stated or not (a.affected_ranges or blind.get(key))
+        )
+        if vendor_only and (not cr or matches_any_range(os_version, cr) is True):
+            clear(a, CLEARED_VENDOR, cr)
             continue
         if not cve_specific.get(key):
             if (
@@ -279,6 +280,9 @@ def _applicable(
             ):
                 clear(a, CLEARED_NOT_THIS_PRODUCT, [])
                 continue
+        if vendor_only:
+            clear(a, CLEARED_UNCOVERED, cr)
+            continue
         if cr and matches_any_range(os_version, cr) is True:
             if matches_any_range(os_version, a.affected_ranges) is not True:
                 clear(a, CLEARED_VENDOR, cr)

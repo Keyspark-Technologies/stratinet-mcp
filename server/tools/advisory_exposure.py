@@ -9,6 +9,8 @@ from common.validate import ToolInputError, check_enum, check_fields, check_size
 from engines.cve import corpus_query
 from engines.cve import public_verdict as pv
 from engines.cve.applicability import (
+    CLEARED_NOT_THIS_PRODUCT,
+    CLEARED_UNCOVERED,
     CLEARED_VENDOR,
     CLEARED_VERSION,
     SUPPORTED_VENDORS,
@@ -249,8 +251,26 @@ def _proving(lookup, cve_id: str, version: str) -> tuple[str | None, list]:
     if by_version:
         return CLEARED_VERSION, by_version
     by_vendor = [a for a in cleared if a.cleared == CLEARED_VENDOR]
-    by_vendor.sort(key=lambda a: not _covering(a.ranges_checked, version))
-    return CLEARED_VENDOR, by_vendor
+    if by_vendor:
+        by_vendor.sort(key=lambda a: not _covering(a.ranges_checked, version))
+        return CLEARED_VENDOR, by_vendor
+    return CLEARED_UNCOVERED, [a for a in cleared if a.cleared == CLEARED_UNCOVERED]
+
+
+def _sibling_fix(lookup, cve_id: str, version: str) -> str | None:
+    current = parse_version(version)
+    if current is None:
+        return None
+    siblings = [
+        a
+        for a in lookup.cleared
+        if a.cve_id == cve_id and a.cleared not in (CLEARED_NOT_THIS_PRODUCT, CLEARED_UNCOVERED)
+    ]
+    fixes = {f for a in siblings for f in a.fixed_versions}
+    later = sorted(
+        f for f in fixes if (p := parse_version(f)) is not None and _num(p) > _num(current)
+    )
+    return _fixed_in(later, version)
 
 
 def _detector_key(vendor: str) -> str:
@@ -401,6 +421,8 @@ def _derive(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
     match = (proving or [None])[0]
     fixes = sorted({f for a in proving for f in a.fixed_versions})
     fixed_in = _fixed_in(fixes, version)
+    if fixed_in is None and kind is None:
+        fixed_in = _sibling_fix(lookup, cve_id, version)
     advisory = _advisory(match) if facts.has_rows else None
     out: dict[str, Any] = {
         "verdict": verdict.verdict,
@@ -526,6 +548,7 @@ def _single(inputs: dict) -> dict:
     payload = project(finding, ENVELOPE)
     truncated = bool(payload.pop("limits", {}).get("response_truncated"))
     out = copy.deepcopy(payload)
+    out["limits"] = {"response_truncated": False}
     for name, keep in SINGLE_SHED:
         items = out.get(name)
         if not isinstance(items, list):
