@@ -265,8 +265,12 @@ def _applicable(
         key = (a.advisory_id, a.cve_id)
         st = statuses.get(key) or set()
         cr = clear_ranges.get(key) or []
-        if st and st <= {"not_affected", ""}:
-            clear(a, CLEARED_VENDOR, cr)
+        if st == {"not_affected"}:
+            if not cr or matches_any_range(os_version, cr) is True:
+                clear(a, CLEARED_VENDOR, cr)
+                continue
+            a.substantiated = False
+            kept.append(a)
             continue
         if not cve_specific.get(key):
             if (
