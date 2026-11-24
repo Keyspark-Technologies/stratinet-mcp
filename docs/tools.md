@@ -101,7 +101,7 @@ Single-CVE answers, and each row of a list answer, carry exactly one of six verd
 |---|---|
 | `version_unparseable` | The version string could not be parsed. |
 | `version_lines_not_comparable` | The version is on a release train the advisory's ranges cannot be compared with. |
-| `affected_range_unreadable` | The advisory's affected-version data could not be read reliably. |
+| `affected_range_unreadable` | The advisory's affected-version data could not be read reliably, or the vendor lists only other release trains as not affected. |
 | `no_advisory_data` | There is no advisory data for this CVE on this product. |
 | `platform_dependent` | Exposure depends on the platform or hardware and cannot be read from configuration. |
 | `feature_not_readable_for_vendor` | The vulnerable feature cannot be read from this vendor's configuration. |

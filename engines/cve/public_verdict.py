@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from common.validate import ToolInputError
-from engines.cve.applicability import CLEARED_NOT_THIS_PRODUCT
+from engines.cve.applicability import CLEARED_NOT_THIS_PRODUCT, CLEARED_UNCOVERED
 
 NOT_AFFECTED = "not_affected"
 VULNERABLE = "vulnerable"
@@ -61,6 +61,8 @@ FACT_EXPLICITLY_DISABLED = "explicitly_disabled"
 FACT_HARDENED = "hardened"
 
 FACT_VALUES = (FACT_PRESENT, FACT_ABSENT, FACT_EXPLICITLY_DISABLED, FACT_HARDENED)
+
+_UNDECIDED = frozenset({CLEARED_UNCOVERED, CLEARED_NOT_THIS_PRODUCT})
 
 DETECTOR_VENDOR = {"arista_eos": "arista", "fortinet_fortios": "fortinet"}
 
@@ -233,7 +235,10 @@ def facts_for(lookup, cve_id: str, rules: RuleFacts, grounding: str | None = Non
         version_match, version_reason = None, VERSION_UNPARSEABLE
     else:
         hits = [a for a in lookup.advisories if a.cve_id == cid]
-        if not hits:
+        why = {a.cleared for a in lookup.cleared if a.cve_id == cid}
+        if not hits and CLEARED_UNCOVERED in why and why <= _UNDECIDED:
+            version_match, version_reason = None, AFFECTED_RANGE_UNREADABLE
+        elif not hits:
             version_match, version_reason = False, None
         elif any(a.substantiated for a in hits):
             version_match, version_reason = True, None
