@@ -1,15 +1,21 @@
+import copy
 import datetime
 import re
 from functools import lru_cache
 from typing import Any
 
-from common.project import fit, project
+from common.project import fit, project, response_size
 from common.validate import ToolInputError, check_enum, check_fields, check_size
 from engines.cve import corpus_query
 from engines.cve import public_verdict as pv
-from engines.cve.applicability import CLEARED_VERSION, SUPPORTED_VENDORS, advisories_for_version
+from engines.cve.applicability import (
+    CLEARED_VENDOR,
+    CLEARED_VERSION,
+    SUPPORTED_VENDORS,
+    advisories_for_version,
+)
 from engines.cve.rule_loader import load_rules
-from engines.cve.version_match import _num, parse_version
+from engines.cve.version_match import _num, matches_any_range, parse_version
 from server.data import data_dir, data_version
 
 NAME = "advisory_exposure"
@@ -33,6 +39,11 @@ MAX_LIST_BYTES = 64 * 1024
 MAX_FINDINGS = 25
 MAX_EVIDENCE = 5
 MAX_SNIPPET = 240
+MAX_COMMANDS = 8
+MAX_RANGES = 16
+
+CLEARED_BY_RANGE = "affected_range"
+CLEARED_BY_VENDOR = "vendor_statement"
 
 CVE_ID = re.compile(r"^CVE-\d{4}-\d{4,7}$")
 
@@ -96,14 +107,24 @@ ENVELOPE = (
     "hardening_commands",
     "fixed_in",
     "ranges_checked",
+    "cleared_by",
     "no_rule_reason",
     "what_would_settle_it",
     "basis",
     "assessed",
     "data_version",
+    "limits",
 )
 
 HOISTED = ("vendor", "version", "basis", "data_version")
+
+SINGLE_SHED = (
+    ("hardening_commands", 0),
+    ("conditions", 0),
+    ("check_commands", 1),
+    ("vulnerable_commands", 1),
+    ("ranges_checked", 1),
+)
 
 EVIDENCE_FIELDS = (
     "feature",
@@ -190,7 +211,16 @@ def _fixed_in(fixes: list, version: str) -> str | None:
     return min(same)[1] if same else None
 
 
-def _ranges(ranges: list) -> list:
+def _train(text: str) -> tuple:
+    parsed = parse_version(text or "")
+    return _num(parsed)[:2] if parsed is not None else ()
+
+
+def _own_train(r: dict, train: tuple) -> bool:
+    return bool(train) and any(_train(r.get(k)) == train for k in ("train", "introduced", "fixed"))
+
+
+def _ranges(ranges: list, version: str) -> list:
     out = []
     for r in ranges:
         row = {
@@ -200,8 +230,27 @@ def _ranges(ranges: list) -> list:
         }
         if r.get("train"):
             row["train"] = r["train"]
-        out.append(row)
-    return out
+        if row not in out:
+            out.append(row)
+    train = _train(version)
+    return sorted(out, key=lambda r: not _own_train(r, train))
+
+
+def _covering(ranges: list, version: str) -> list:
+    return [r for r in ranges if matches_any_range(version, [r]) is True]
+
+
+def _proving(lookup, cve_id: str, version: str) -> tuple[str | None, list]:
+    kept = [a for a in lookup.advisories if a.cve_id == cve_id]
+    if kept:
+        return None, kept
+    cleared = [a for a in lookup.cleared if a.cve_id == cve_id]
+    by_version = [a for a in cleared if a.cleared == CLEARED_VERSION]
+    if by_version:
+        return CLEARED_VERSION, by_version
+    by_vendor = [a for a in cleared if a.cleared == CLEARED_VENDOR]
+    by_vendor.sort(key=lambda a: not _covering(a.ranges_checked, version))
+    return CLEARED_VENDOR, by_vendor
 
 
 def _detector_key(vendor: str) -> str:
@@ -238,6 +287,15 @@ def _commands(rows: list) -> list:
     return out
 
 
+def _union(lists) -> list:
+    out = []
+    for items in lists:
+        for item in items:
+            if item not in out:
+                out.append(item)
+    return out
+
+
 def _actions(advisory_ids: list) -> dict:
     by_advisory: dict = {}
     for row in corpus_query.actions_for(advisory_ids):
@@ -262,7 +320,7 @@ def _grounding(cve_id: str, vendor: str, inputs: dict) -> tuple[str | None, list
         item = project(row, EVIDENCE_FIELDS)
         item["matched_config_snippet"] = (item.get("matched_config_snippet") or "")[:MAX_SNIPPET]
         evidence.append(item)
-    return result["status"], evidence[:MAX_EVIDENCE]
+    return result["status"], evidence
 
 
 def _facts_evidence(cve_id, vendor, facts, status, features, cve_rules) -> list:
@@ -286,7 +344,7 @@ def _facts_evidence(cve_id, vendor, facts, status, features, cve_rules) -> list:
                 else "not reported in feature_facts",
             }
         )
-    return evidence[:MAX_EVIDENCE]
+    return evidence
 
 
 def _settle(reason: str, advisory: dict | None, fixed_in: str | None, detail: str | None) -> list:
@@ -309,17 +367,39 @@ def _settle(reason: str, advisory: dict | None, fixed_in: str | None, detail: st
     return ["check the vendor advisory: this feature cannot be read from configuration here"]
 
 
+def _cap(out: dict, name: str, limit: int) -> None:
+    items = out.get(name)
+    if isinstance(items, list) and len(items) > limit:
+        out[name] = items[:limit]
+        out.setdefault("limits", {})["response_truncated"] = True
+
+
+def _bound(out: dict) -> dict:
+    _cap(out, "evidence", MAX_EVIDENCE)
+    for row in out.get("evidence") or []:
+        _cap(row, "vulnerable_commands", MAX_COMMANDS)
+        if row.pop("limits", None):
+            out.setdefault("limits", {})["response_truncated"] = True
+    for name in ("vulnerable_commands", "check_commands", "hardening_commands"):
+        _cap(out, name, MAX_COMMANDS)
+    _cap(out, "ranges_checked", MAX_RANGES)
+    return out
+
+
 def _finding(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
+    return _bound(_derive(lookup, cve_id, inputs, actions))
+
+
+def _derive(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
     vendor, version = inputs["vendor"], lookup.version
     features, cve_rules = _rules()
     rules = pv.rule_facts(cve_id, vendor, features, cve_rules)
     status, evidence = _grounding(cve_id, vendor, inputs)
     facts = pv.facts_for(lookup, cve_id, rules, status)
     verdict = pv.derive(facts)
-    kept = [a for a in lookup.advisories if a.cve_id == cve_id]
-    cleared = [a for a in lookup.cleared if a.cve_id == cve_id]
-    match = (kept or cleared or [None])[0]
-    fixes = sorted({f for a in kept + cleared for f in a.fixed_versions})
+    kind, proving = _proving(lookup, cve_id, version)
+    match = (proving or [None])[0]
+    fixes = sorted({f for a in proving for f in a.fixed_versions})
     fixed_in = _fixed_in(fixes, version)
     advisory = _advisory(match) if facts.has_rows else None
     out: dict[str, Any] = {
@@ -345,11 +425,22 @@ def _finding(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
         out["what_would_settle_it"] = _settle(verdict.reason, advisory, fixed_in, detail)
         return out
     if verdict.verdict == pv.NOT_AFFECTED:
-        if verdict.proof == pv.PROOF_VERSION:
-            proof = [a for a in cleared if a.cleared == CLEARED_VERSION] or cleared
-            out["reason"] = f"version {version} is outside every affected range for this product"
+        if verdict.proof == pv.PROOF_VERSION and kind == CLEARED_VENDOR:
+            spans = [r for a in proving for r in _covering(a.ranges_checked, version)]
+            out["reason"] = (
+                f"the vendor's advisory states version {version} is not affected"
+                if spans
+                else "the vendor's advisory states this product is not affected"
+            )
+            out["cleared_by"] = CLEARED_BY_VENDOR
             out["fixed_in"] = fixed_in
-            out["ranges_checked"] = _ranges([r for a in proof for r in a.ranges_checked])
+            out["ranges_checked"] = _ranges(spans, version)
+            out["assessed"]["version_compared"] = bool(spans)
+        elif verdict.proof == pv.PROOF_VERSION:
+            out["reason"] = f"version {version} is outside every affected range for this product"
+            out["cleared_by"] = CLEARED_BY_RANGE
+            out["fixed_in"] = fixed_in
+            out["ranges_checked"] = _ranges([r for a in proving for r in a.ranges_checked], version)
         else:
             out["reason"] = "the vulnerable feature is not in use on this device"
             out["evidence"] = evidence
@@ -359,7 +450,7 @@ def _finding(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
         out["reason"] = f"version {version} is within the affected range; {NO_RULE_REASON}"
         out["no_rule_reason"] = NO_RULE_REASON
         out["fixed_in"] = fixed_in
-        out["ranges_checked"] = _ranges([r for a in kept for r in a.affected_ranges])
+        out["ranges_checked"] = _ranges([r for a in proving for r in a.affected_ranges], version)
         return out
     first = rule_features[0] if rule_features else None
     cited = None
@@ -368,18 +459,23 @@ def _finding(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
         if cited is None:
             raise ValueError("likely_vulnerable_unless_disabled without a cited default_on")
         first = cited[0]
-    spec = features.get(first) or {}
-    out["feature"] = first
     if verdict.verdict == pv.VULNERABLE:
+        present = {e["feature"] for e in evidence}
+        matched = [f for f in rule_features if f in present] or rule_features[:1]
+        out["feature"] = matched[0] if matched else None
         out["reason"] = "vulnerable feature present: " + ", ".join(e["feature"] for e in evidence)
         out["evidence"] = evidence
-        out["vulnerable_commands"] = _vulnerable_commands(spec, key)
+        out["vulnerable_commands"] = _union(
+            _vulnerable_commands(features.get(f) or {}, key) for f in matched
+        )
         out["fixed_in"] = fixed_in
         return out
+    spec = features.get(first) or {}
+    out["feature"] = first
     out["feature_label"] = spec.get("label", first)
-    out["vulnerable_commands"] = [
-        c for f in rule_features for c in _vulnerable_commands(features.get(f) or {}, key)
-    ]
+    out["vulnerable_commands"] = _union(
+        _vulnerable_commands(features.get(f) or {}, key) for f in rule_features
+    )
     rows = (actions or {}).get(match.advisory_id if match else "", {})
     check = _commands(rows.get("verify", []))
     out["check_commands"] = check or [CONFIG_LISTING[vendor]]
@@ -428,7 +524,19 @@ def _single(inputs: dict) -> dict:
     finding["basis"] = BASIS
     finding["data_version"] = data_version(corpus=True)
     payload = project(finding, ENVELOPE)
-    return fit(payload, MAX_SINGLE_BYTES, ("hardening_commands", "conditions"))
+    truncated = bool(payload.pop("limits", {}).get("response_truncated"))
+    out = copy.deepcopy(payload)
+    for name, keep in SINGLE_SHED:
+        items = out.get(name)
+        if not isinstance(items, list):
+            continue
+        while len(items) > keep and response_size(out) > MAX_SINGLE_BYTES:
+            items.pop()
+            truncated = True
+    fitted = fit(out, MAX_SINGLE_BYTES, ())
+    if truncated:
+        fitted["limits"]["response_truncated"] = True
+    return fitted
 
 
 def _sort_key(finding: dict) -> tuple:
@@ -458,7 +566,9 @@ def _list(inputs: dict) -> dict:
             _finding(lookup, f["cve_id"], inputs, actions) if _needs_actions(f) else f
             for f in returned
         ]
-    rows = [project(f, tuple(n for n in ENVELOPE if n not in HOISTED)) for f in returned]
+    capped = any((f.get("limits") or {}).get("response_truncated") for f in returned)
+    fields = tuple(n for n in ENVELOPE if n not in HOISTED and n != "limits")
+    rows = [project(f, fields) for f in returned]
     payload = {
         "mode": "list",
         "vendor": inputs["vendor"],
@@ -474,6 +584,8 @@ def _list(inputs: dict) -> dict:
     out = fit(payload, MAX_LIST_BYTES, ("findings",))
     out["returned"] = len(out["findings"])
     out["truncated"] = total > out["returned"]
+    if capped:
+        out["limits"]["response_truncated"] = True
     return out
 
 

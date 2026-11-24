@@ -59,3 +59,4 @@ tests/made_up_bundle.py
 tests/test_default_on.py
 tests/test_placeholders.py
 tests/test_determinism_fixes.py
+tests/test_advisory_review.py

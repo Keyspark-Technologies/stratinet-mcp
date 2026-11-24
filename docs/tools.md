@@ -88,7 +88,7 @@ Single-CVE answers, and each row of a list answer, carry exactly one of six verd
 
 | `verdict` | Meaning | Also carries |
 |---|---|---|
-| `not_affected` | Proven not exposed: either the version is outside every affected range, or the configuration shows the vulnerable feature is not in use. | Always a proof: `fixed_in` and `ranges_checked` for the version path, or `evidence` for the configuration path. |
+| `not_affected` | Proven not exposed: the version is outside every affected range, the vendor's advisory states this version or product is not affected, or the configuration shows the vulnerable feature is not in use. | Always a proof: `fixed_in`, `ranges_checked` and `cleared_by` for the version path, or `evidence` for the configuration path. `cleared_by` is `affected_range` when the version was compared with the affected ranges, or `vendor_statement` when the vendor lists it as not affected; then `ranges_checked` holds the vendor's not-affected spans that cover the version, and is empty when the statement covers the whole product (`assessed.version_compared` is then `false`). |
 | `vulnerable` | The version is affected and the configuration shows the vulnerable feature in use. | `feature`, `evidence`, `vulnerable_commands`, `fixed_in` |
 | `depends_on_configuration` | The version is affected; whether you are exposed depends on a feature the answer could not see. | `feature`, `feature_label`, `vulnerable_commands`, `check_commands`, `check_source`, `decides`, `fixed_in`; `conditions` when the CVE involves several features |
 | `likely_vulnerable_unless_disabled` | The version is affected and the feature is on by default, per a cited vendor source; you are exposed unless it has been turned off. | As above, plus `default_state`, `default_on_source{quote, url}` and, where the advisory publishes a workaround, `hardening_commands` |
@@ -141,6 +141,12 @@ severity (critical first), then by CVE id. In list mode a version that cannot be
 | Single-CVE answer | 8 KB, at most 5 `evidence` rows |
 | List answer | 64 KB, at most 25 findings |
 | `matched_config_snippet` | 240 characters |
+| `vulnerable_commands`, `check_commands`, `hardening_commands` | 8 each, in every answer and finding |
+| `ranges_checked` | 16, those on the version's own release train first |
+
+When a cap or the size budget shortens a list, `limits.response_truncated` is `true`. The verdict,
+the `evidence` rows and at least one entry of `ranges_checked`, `check_commands` and
+`vulnerable_commands` are never dropped.
 
 ### Example
 
