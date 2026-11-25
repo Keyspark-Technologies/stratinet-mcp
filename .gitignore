@@ -63,3 +63,4 @@ tests/test_advisory_review.py
 tests/test_runtime_review.py
 tests/test_review2_runtime.py
 tests/test_review2_advisory.py
+tests/test_live_lab_fixes.py

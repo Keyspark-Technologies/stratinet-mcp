@@ -704,6 +704,23 @@ def _uptime_hours(text: str) -> float | None:
     return total if found else None
 
 
+_MIN_FLAP_CHANGES = 4
+_CLEARED_AGO = re.compile(
+    r'Last clearing of .*? counters\s+((?:(\d+)\s+days?,\s*)?(\d+):(\d{2}):(\d{2})(?:\s+ago)?)\s*$',
+    re.I | re.M)
+
+
+def _cleared_hours(text: str) -> tuple[float, str] | None:
+    m = _CLEARED_AGO.search(text)
+    if not m:
+        return None
+    days, hours, minutes, seconds = (int(g or 0) for g in m.groups()[1:])
+    if minutes > 59 or seconds > 59:
+        return None
+    total = days * 24 + hours + minutes / 60 + seconds / 3600
+    return (total, m.group(1)) if total > 0 else None
+
+
 def _read_interface_detail(text: str) -> dict | None:
     first = next((l for l in text.splitlines() if l.strip()), "")
     m = re.match(r"^(\S+) is (\S+), line protocol is (\S+)", first)
@@ -752,10 +769,11 @@ def _read_interface_detail(text: str) -> dict | None:
     hrs = _uptime_hours(rec.get("uptime") or "")
     if hrs:
         rec["uptime_hours"] = f"{hrs:.2f}"
-    if rec.get("flaps") and hrs and hrs > 0 and rec["counters_cleared"] == "never":
-        rec["flaps_per_hour"] = f"{int(rec['flaps']) / hrs:.2f}"
+    window = _cleared_hours(text)
+    if rec.get("flaps") and window and int(rec["flaps"]) >= _MIN_FLAP_CHANGES:
+        rec["flaps_per_hour"] = f"{int(rec['flaps']) / window[0]:.2f}"
         rec["_line_flaps_per_hour"] = (f"{rec.get('_line_flaps', '')}"
-                                       f" (up {rec.get('uptime', '?')}"
+                                       f" (counters cleared {window[1]}"
                                        f" -> {rec['flaps_per_hour']} flaps/hour)")
 
     return {"status": OK, "records": [rec], "source": "interface_detail",

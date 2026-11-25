@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Any
 
 from common.project import ResponseTooLarge, fit, response_size
@@ -55,6 +56,19 @@ NO_COMMAND = "no catalogued command matches this on {vendor}"
 NO_RULE = "the catalogued command has no evidence rule, so its output cannot be read"
 UNREADABLE = "the deterministic parsers could not read this output; nothing is taken from it"
 NOTHING_TO_READ = "the output holds nothing to read; it is not read as health"
+EMPTY_OUTPUT = (
+    "the output was empty; it is not read as health. If that is the complete output, what "
+    "this check reads is not present on the device (for example the feature is not "
+    "configured there); confirm that rather than re-running the command"
+)
+EMPTY_LOG = (
+    "the output was empty; it is not read as health. If that is the complete output, the "
+    "device holds no log line that this check reads; that does not prove nothing happened"
+)
+OTHER_INTERFACES = (
+    "every line in the output names an interface other than the one asked about, so none "
+    "is read as evidence about it; it is not read as health"
+)
 DEVICE_SAID = "device returned '{line}' — no state to read from it"
 NO_RULE_MATCHED = "the output was parsed but no authored rule matched it; it is not read as health"
 AGE_UNKNOWN = (
@@ -67,6 +81,10 @@ PEER_WHY = (
 )
 FAR_END_WHY = "names the device on the far end of the link, so the same check can be read there"
 RERUN_UNREAD = "the output supplied for this check could not be read; paste the complete output"
+RERUN_OTHER = (
+    "the output supplied for this check named only other interfaces; run it again while "
+    "the problem is occurring"
+)
 RERUN_HEALTHY = (
     "the output supplied for this check showed no fault; run it again while the problem "
     "is occurring"
@@ -80,9 +98,36 @@ SETTLE_UNREAD = (
     "{count} output(s) listed in unread gave no usable reading, and no catalogued read-only "
     "command on {vendor} can re-run the check(s) behind them"
 )
+SETTLE_EMPTY = (
+    "{count} output(s) listed in unread were empty; if that is the complete output, what "
+    "the check reads is not present on the device (for example the feature is not "
+    "configured there) — confirm that on the device rather than re-running the command"
+)
 SETTLE_EXHAUSTED = (
     "every check catalogued for this symptom on {vendor} has been read without a reading "
     "that proves a cause, and none can be re-run from the catalogue"
+)
+
+IFNAME_ALIASES = (
+    ("ethernet", ("ethernet", "eth", "et")),
+    ("gigabitethernet", ("gigabitethernet", "gige", "gig", "gi")),
+    ("tengigabitethernet", ("tengigabitethernet", "tengige", "te")),
+    ("fastethernet", ("fastethernet", "fa")),
+    ("twentyfivegige", ("twentyfivegigabitethernet", "twentyfivegige", "twe")),
+    ("fortygigabitethernet", ("fortygigabitethernet", "fortygige", "fo")),
+    ("hundredgigabitethernet", ("hundredgigabitethernet", "hundredgige", "hu")),
+    ("loopback", ("loopback", "lo")),
+    ("port-channel", ("port-channel", "portchannel", "po")),
+    ("vlan", ("vlan", "vl")),
+    ("management", ("management", "mgmt", "ma")),
+    ("tunnel", ("tunnel", "tu")),
+)
+IFNAME_PREFIX = {alias: name for name, aliases in IFNAME_ALIASES for alias in aliases}
+IFNAME = re.compile(
+    r"(?<![\w-])(?:((?:ge|xe|et|fe|mge)-\d+/\d+/\d+(?:\.\d+)?|ae\d+(?:\.\d+)?)|("
+    + "|".join(re.escape(a) for a in sorted(IFNAME_PREFIX, key=lambda a: (-len(a), a)))
+    + r")(\d+(?:/\d+)*(?:\.\d+)?))(?![\w/-]|\.\w)",
+    re.I,
 )
 
 DESCRIPTION = (
@@ -249,17 +294,48 @@ def _outputs(value: Any, vendor: str, cat: catalog.Catalog) -> tuple[list[dict],
     return supplied, truncated
 
 
-def _observations(supplied: list[dict]) -> tuple[list[dict], list[int]]:
+def _ifnames(text: str) -> set[str]:
+    names = set()
+    for match in IFNAME.finditer(text):
+        junos, prefix, number = match.groups()
+        names.add(junos.lower() if junos else IFNAME_PREFIX[prefix.lower()] + number)
+    return names
+
+
+def _asked_interface(params: dict) -> str | None:
+    asked = params.get("ifname") or ""
+    match = IFNAME.fullmatch(asked)
+    return _ifnames(asked).pop() if match else None
+
+
+def _same_interface(name: str, asked: str) -> bool:
+    return name == asked or name.split(".")[0] == asked or asked.split(".")[0] == name
+
+
+def _scoped(text: str, asked: str) -> str:
+    kept = []
+    for line in text.splitlines():
+        names = _ifnames(line)
+        if not names or any(_same_interface(n, asked) for n in names):
+            kept.append(line)
+    return "\n".join(kept) + "\n" if kept else ""
+
+
+def _observations(supplied: list[dict], asked: str | None) -> tuple[list[dict], list[int]]:
     observations, owners = [], []
     order = sorted(range(len(supplied)), key=lambda i: (supplied[i]["origin"] != "local", i))
     for index in order:
         item = supplied[index]
         for capability in item["capabilities"]:
+            output = item["output"]
+            if asked and signals.shape_of(capability) == LOG_SHAPE and output.strip():
+                output = _scoped(output, asked)
+                item["other_interfaces"] = item.get("other_interfaces") or not output
             observations.append(
                 {
                     "capability": capability,
                     "command": item["command"],
-                    "output": item["output"],
+                    "output": output,
                     "origin": item["origin"],
                 }
             )
@@ -283,6 +359,11 @@ def _unread_why(item: dict, entries: list[dict], vendor: str) -> str:
         return NO_COMMAND.format(vendor=vendor)
     if not entries:
         return NO_RULE
+    if not item["output"].strip():
+        logs = all(signals.shape_of(c) == LOG_SHAPE for c in item["capabilities"])
+        return EMPTY_LOG if logs and item["capabilities"] else EMPTY_OUTPUT
+    if item.get("other_interfaces"):
+        return OTHER_INTERFACES
     first = entries[0]
     status = first.get("status")
     if first.get("source") == LOG_AGE_UNKNOWN:
@@ -335,6 +416,7 @@ def _need(
     cat: catalog.Catalog,
     ran: set[str],
     unread: set[str],
+    other: set[str],
     healthy: set[str],
     prefer: frozenset[str],
 ) -> list[dict]:
@@ -364,6 +446,7 @@ def _need(
     tiers = (
         ([c for c in order if c not in ran], None),
         ([c for c in order if c in unread], RERUN_UNREAD),
+        ([c for c in order if c in other], RERUN_OTHER),
         ([c for c in order if c in healthy], RERUN_HEALTHY),
     )
     for capabilities, why in tiers:
@@ -374,7 +457,9 @@ def _need(
     return rows
 
 
-def _settle(issue: str, vendor: str, cat: catalog.Catalog, ran: set[str], unread: int) -> list:
+def _settle(
+    issue: str, vendor: str, cat: catalog.Catalog, ran: set[str], unread: int, empty: int
+) -> list:
     steps = _steps(issue)
     remaining = [c for c in ordered_checks(issue) if c not in ran]
     settle = []
@@ -388,6 +473,8 @@ def _settle(issue: str, vendor: str, cat: catalog.Catalog, ran: set[str], unread
         )
     if unread:
         settle.append(SETTLE_UNREAD.format(count=unread, vendor=vendor))
+    if empty:
+        settle.append(SETTLE_EMPTY.format(count=empty))
     return settle or [SETTLE_EXHAUSTED.format(vendor=vendor)]
 
 
@@ -468,7 +555,7 @@ def troubleshoot_analyze(arguments: dict[str, Any]) -> dict[str, Any]:
     cat = catalog.current()
     supplied, outputs_truncated = _outputs(arguments["outputs"], vendor, cat)
 
-    observations, owners = _observations(supplied)
+    observations, owners = _observations(supplied, _asked_interface(params))
     request = {"vendor": vendor, "issue": issue, "observations": observations, "params": params}
     result = asyncio.run(triage(None, request))
     trail = result["trail"]
@@ -490,16 +577,23 @@ def troubleshoot_analyze(arguments: dict[str, Any]) -> dict[str, Any]:
         clipped = True
 
     unread_caps: set[str] = set()
+    other_caps: set[str] = set()
     unread_rows = []
+    empty = 0
     for item, entries in zip(supplied, _entries_by_output(supplied, trail, owners), strict=True):
         if not any(e.get("signal") for e in entries):
-            unread_caps.update(item["capabilities"])
             why = _unread_why(item, entries, vendor)
+            if why in (EMPTY_OUTPUT, EMPTY_LOG):
+                empty += 1
+            elif why == OTHER_INTERFACES:
+                other_caps.update(item["capabilities"])
+            else:
+                unread_caps.update(item["capabilities"])
             unread_rows.append({"command": item["command"], "why": why})
     ran = {t["capability"] for t in trail}
     faulted = {t["capability"] for t in trail if findings.is_fault(t.get("signal"))}
     healthy = {t["capability"] for t in trail if t.get("signal")} - faulted
-    known = (result, issue, vendor, cat, ran, unread_caps, healthy)
+    known = (result, issue, vendor, cat, ran, unread_caps, other_caps, healthy)
 
     ranked = findings.rank(trail)
     root = ranked["root_cause"]
@@ -525,7 +619,9 @@ def troubleshoot_analyze(arguments: dict[str, Any]) -> dict[str, Any]:
         answer["reason"] = NOTHING_PROVABLE
         answer["need"] = _need(*known, frozenset())
     if answer["status"] != "root_cause" and not answer["need"]:
-        answer["what_would_settle_it"] = _settle(issue, vendor, cat, ran, len(unread_rows))
+        answer["what_would_settle_it"] = _settle(
+            issue, vendor, cat, ran, len(unread_rows) - empty, empty
+        )
 
     answer["read"] = read_rows
     answer["unread"] = unread_rows

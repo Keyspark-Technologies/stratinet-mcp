@@ -300,8 +300,13 @@ Every status also carries `read` (up to 12 `{command, read_as, line}` rows: what
 output) and `unread` (`{command, why}` for every output that could not be read). Output in
 `unread` never counts as evidence of health. Log lines are aged against the latest line of the
 same paste; a line whose time cannot be placed, such as one in a paste of year-less stamps that
-spans more than half a year, is never taken as a current fault. Quoted lines are at most 400
-characters.
+spans more than half a year, is never taken as a current fault. An empty output is listed in
+`unread` and is not asked for again: its `why` says to confirm on the device that what the check
+reads is not there, for example because the feature is not configured. When `context.interface`
+is given, a log line that names only other interfaces is not read as evidence about it. A flap
+rate is read only over a time since counters were cleared that the output states, never over the
+link's current up time, and only from four or more link status changes. Quoted lines are at most
+400 characters.
 
 Caps: 8 outputs, 64 KB each, 256 KB in total; answer at most 16 KB. When the answer must be
 shortened, `read` rows go first, then `also_found`, then `symptoms`; the verdict, the evidence line
