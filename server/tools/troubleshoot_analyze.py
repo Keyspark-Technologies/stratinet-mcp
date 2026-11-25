@@ -129,6 +129,7 @@ IFNAME = re.compile(
     + r")(\d+(?:/\d+)*(?:\.\d+)?))(?![\w/-]|\.\w)",
     re.I,
 )
+DESCRIPTION_TEXT = re.compile(r"\([^()]*\)")
 
 DESCRIPTION = (
     "Analyze pasted output of read-only troubleshooting commands for one network problem. "
@@ -315,7 +316,7 @@ def _same_interface(name: str, asked: str) -> bool:
 def _scoped(text: str, asked: str) -> str:
     kept = []
     for line in text.splitlines():
-        names = _ifnames(line)
+        names = _ifnames(DESCRIPTION_TEXT.sub(" ", line))
         if not names or any(_same_interface(n, asked) for n in names):
             kept.append(line)
     return "\n".join(kept) + "\n" if kept else ""
