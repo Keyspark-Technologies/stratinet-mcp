@@ -112,8 +112,13 @@ Single-CVE answers, and each row of a list answer, carry exactly one of six verd
 example `{"if_present": "vulnerable", "if_absent": "not_affected"}`. A key appears only for an
 outcome the configuration can actually settle; when absence proves nothing, there is no
 `if_absent`. `check_source` is `advisory` when `check_commands` come from the vendor advisory, or
-`config_listing` when the advisory gives no check and the answer points you at the full
-configuration listing instead.
+`config_listing` when the advisory gives no check and the answer points you at the configuration
+listing instead: `show running-config` on Arista EOS, and on FortiOS `show full-configuration`
+narrowed to the configuration section the `vulnerable_commands` name (for example
+`show full-configuration vpn ssl settings` for `config vpn ssl settings / set status enable`).
+When a vulnerable line does not name its section, the FortiOS check is the whole
+`show full-configuration`. `full-configuration` is used because it also prints settings left at
+their default, which plain `show` omits.
 
 Every single-CVE answer also carries `cve_id`, `vendor`, `version`, `advisory{id, url, published,
 severity}` (or `null` when there is no advisory data), `reason` and

@@ -56,6 +56,10 @@ CONFIG_LISTING = {
     "fortinet_fortios": "show full-configuration",
 }
 
+SECTIONED_LISTING = frozenset({"fortinet_fortios"})
+
+CONFIG_PATH = re.compile(r"(?i)^config((?:\s+[a-z0-9][a-z0-9_-]*)+)\s+/\s+\S")
+
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 NO_RULE_REASON = "no deterministic exposure rule exists for this CVE"
@@ -314,6 +318,21 @@ def _decides(spec: dict, key: str) -> dict:
     return out
 
 
+def _config_path(command: str) -> str | None:
+    match = CONFIG_PATH.match(command.strip())
+    return " ".join(match.group(1).split()) if match else None
+
+
+def _listing(vendor: str, commands: list) -> list:
+    base = CONFIG_LISTING[vendor]
+    if vendor not in SECTIONED_LISTING or not commands:
+        return [base]
+    paths = [_config_path(c) for c in commands]
+    if not all(paths):
+        return [base]
+    return [f"{base} {p}" for p in _union([paths])]
+
+
 def _commands(rows: list) -> list:
     out = []
     for row in rows:
@@ -517,7 +536,7 @@ def _derive(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
     )
     rows = (actions or {}).get(match.advisory_id if match else "", {})
     check = _commands(rows.get("verify", []))
-    out["check_commands"] = check or [CONFIG_LISTING[vendor]]
+    out["check_commands"] = check or _listing(vendor, out["vulnerable_commands"])
     out["check_source"] = "advisory" if check else "config_listing"
     out["decides"] = _decides(spec, key)
     if len(rule_features) > 1:
