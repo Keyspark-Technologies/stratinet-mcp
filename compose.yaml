@@ -1,0 +1,66 @@
+name: stratinet-mcp-local
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: kb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - corpus:/var/lib/postgresql/data
+      - type: bind
+        source: ./local/load-corpus.sh
+        target: /docker-entrypoint-initdb.d/load-corpus.sh
+        read_only: true
+      - type: bind
+        source: ${KB_DUMP:-./kb-dump.sql.gz}
+        target: /corpus/dump
+        read_only: true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          psql -h 127.0.0.1 -U postgres -d kb -tAc
+          "SELECT 1 FROM kb.load_generation WHERE is_current LIMIT 1" | grep -q 1
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  server:
+    build:
+      context: .
+      target: runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AUTH_MODE: disabled
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATA_DIR: /bundle
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: kb
+      PGUSER: mcp_reader
+      PGPASSWORD: mcp_reader
+    volumes:
+      - type: bind
+        source: ${MCP_DATA_DIR:-./data}
+        target: /bundle
+        read_only: true
+    ports:
+      - "127.0.0.1:${MCP_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  corpus:
