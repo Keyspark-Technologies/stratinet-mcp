@@ -130,8 +130,8 @@ examined for this product), `total` (how many apply), `returned`, `truncated`, `
 `version`, `basis` and `data_version` fields, which appear once at the top.
 
 CVEs cleared by version alone are counted in `checked` but not returned. Findings are ordered by
-severity (critical first), then by CVE id. In list mode a version that cannot be compared is an
-`invalid_value` error on `version`, because there is nothing to sweep.
+severity (critical first), then by CVE id. In list mode a version that cannot be compared is a
+`version_unparseable` error on `version`, because there is nothing to sweep.
 
 ### Size caps
 
@@ -223,8 +223,10 @@ output to `troubleshoot_analyze`.
 <!-- END GENERATED: troubleshoot_start -->
 
 `symptom` is one of `bgp-session-down`, `ospf-neighbor-down` or `interface-degraded`, or a fixed
-alias of one of them; matching ignores case and extra spaces, and anything else is rejected with
-`unsupported_symptom` and the list of supported symptoms. `context.interface` must be an interface
+alias of one of them; matching ignores case and extra spaces. Only symptoms whose procedure is
+marked verified in the server's data bundle are served (today `interface-degraded` and
+`ospf-neighbor-down`); anything else is rejected with `unsupported_symptom` and the list of
+supported symptoms. `context.interface` must be an interface
 name such as `Ethernet1` or `GigabitEthernet0/1`; `context.peer_ip` must be an IPv4 or IPv6
 address.
 
@@ -256,7 +258,7 @@ Reads pasted output of read-only commands for one problem and says what it prove
 ### Input
 
 <!-- BEGIN GENERATED: troubleshoot_analyze -->
-> Analyze pasted output of read-only troubleshooting commands for one network problem. Give the vendor, the symptom (bgp-session-down, ospf-neighbor-down or interface-degraded) and up to 8 outputs, each with the command that produced it and whether it came from the local or the peer device. Returns root_cause with the proving line, need_more_evidence with the strongest reading so far and up to 3 commands to run next, or cannot_determine with what would settle it. Outputs that could not be read are listed in unread and never count as health. A next command that still holds a {placeholder} lists it in placeholders, with the context field that fills it or null when the value must be typed in by hand. Vendors: arista_eos, cisco_ios, juniper_junos. Set evidence_complete when the device cannot be reached again; the answer then says which checks were missing.
+> Analyze pasted output of read-only troubleshooting commands for one network problem. Give the vendor, the symptom (bgp-session-down, ospf-neighbor-down or interface-degraded; only procedures verified on real devices are accepted) and up to 8 outputs, each with the command that produced it and whether it came from the local or the peer device. Returns root_cause with the proving line, need_more_evidence with the strongest reading so far and up to 3 commands to run next, or cannot_determine with what would settle it. Outputs that could not be read are listed in unread and never count as health. A next command that still holds a {placeholder} lists it in placeholders, with the context field that fills it or null when the value must be typed in by hand. Vendors: arista_eos, cisco_ios, juniper_junos. Set evidence_complete when the device cannot be reached again; the answer then says which checks were missing.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -344,7 +346,7 @@ A rejected input returns `isError: true` and a body like:
 
 | Tool | Codes |
 |---|---|
-| `advisory_exposure` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `malformed_cve_id`, `invalid_feature_fact` |
+| `advisory_exposure` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `malformed_cve_id`, `invalid_feature_fact`, `version_unparseable` |
 | `translate_diagnostic` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor` |
 | `troubleshoot_start` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `unsupported_symptom` |
 | `troubleshoot_analyze` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `unsupported_symptom` |

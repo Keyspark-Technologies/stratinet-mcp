@@ -9,6 +9,7 @@ MESSAGES = {
     "unsupported_symptom": "This symptom is not supported by this tool.",
     "malformed_cve_id": "The CVE id is not in the form CVE-YYYY-NNNN.",
     "invalid_feature_fact": "A feature fact does not apply to this feature on this vendor.",
+    "version_unparseable": "The version string could not be parsed.",
     "internal_error": "The tool could not complete this request.",
     "busy": "The server is busy with other requests. Try again shortly.",
 }
