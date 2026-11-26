@@ -10,7 +10,7 @@ answers from catalogued data and hand-written rules.
 
 | Tool | What it does |
 |---|---|
-| `advisory_exposure` | Says whether an Arista EOS or Fortinet FortiOS version is exposed to a CVE, or lists every CVE that applies to a version. |
+| `advisory_exposure` | Says whether an Arista EOS or Fortinet FortiOS version is exposed to a CVE, or lists every CVE that applies to a version, 25 per page (page on with `offset` / `next_offset`). |
 | `translate_diagnostic` | Gives the catalogued read-only command for a diagnostic on one or more vendors. |
 | `troubleshoot_start` | Gives the ordered read-only checks to run for a symptom on a device. |
 | `troubleshoot_analyze` | Reads pasted output of those checks and reports a proven cause, the next commands to run, or that nothing is provable yet. |

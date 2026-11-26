@@ -44,7 +44,7 @@ the version.
 ### Input
 
 <!-- BEGIN GENERATED: advisory_exposure -->
-> Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it.
+> Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. List mode returns at most 25 findings per call, most severe first; when the answer carries next_offset, call again with offset set to it to get the next page, until next_offset is absent. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -54,6 +54,7 @@ the version.
 | `hardware_model` | string | no |  |
 | `running_config` | string | no |  |
 | `feature_facts` | object of strings | no | values: `present`, `absent`, `explicitly_disabled`, `hardened`. |
+| `offset` | integer | no | default `0`. |
 
 <!-- END GENERATED: advisory_exposure -->
 
@@ -133,13 +134,21 @@ CVEs cleared by version alone are counted in `checked` but not returned. Finding
 severity (critical first), then by CVE id. In list mode a version that cannot be compared is a
 `version_unparseable` error on `version`, because there is nothing to sweep.
 
+A list answer holds one page of at most 25 findings. `offset` (default `0`) skips that many
+findings in the same order, so the pages of one question never overlap or reorder. When more
+findings remain, the answer carries `next_offset`; call again with `offset` set to it, and stop
+when `next_offset` is absent. `total` always counts every finding, `returned` counts this page,
+and `truncated` is `true` while findings remain after this page. An `offset` at or past `total`
+returns an empty page. `offset` is for list mode only: a non-zero `offset` with `cve_id` is an
+`invalid_value` error.
+
 ### Size caps
 
 | | Limit |
 |---|---|
 | `running_config` | 256 KB |
 | Single-CVE answer | 8 KB, at most 5 `evidence` rows |
-| List answer | 64 KB, at most 25 findings |
+| List answer | 64 KB, at most 25 findings per page (page through the rest with `offset`) |
 | `matched_config_snippet` | 240 characters |
 | `vulnerable_commands`, `check_commands`, `hardening_commands` | 8 each, in every answer and finding |
 | `ranges_checked` | 16, those on the version's own release train first |

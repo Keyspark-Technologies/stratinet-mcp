@@ -27,7 +27,9 @@ BASIS = "deterministic — version-range comparison and hand-written config dete
 DESCRIPTION = (
     "Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor "
     "security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every "
-    "CVE that applies to that version. Optionally add running_config or feature_facts to settle "
+    "CVE that applies to that version. List mode returns at most 25 findings per call, most severe "
+    "first; when the answer carries next_offset, call again with offset set to it to get the next "
+    "page, until next_offset is absent. Optionally add running_config or feature_facts to settle "
     "whether the vulnerable feature is in use. Answers are deterministic and never guess "
     "'not affected': when unsure the answer says what would settle it."
 )
@@ -70,6 +72,7 @@ SCHEMA = {
             "type": "object",
             "additionalProperties": {"type": "string", "enum": list(pv.FACT_VALUES)},
         },
+        "offset": {"type": "integer", "minimum": 0, "default": 0},
     },
     "required": ["vendor", "version"],
     "additionalProperties": False,
@@ -154,7 +157,7 @@ def _read_input(arguments: dict) -> dict:
     check_fields(
         arguments,
         required=("vendor", "version"),
-        optional=("cve_id", "hardware_model", "running_config", "feature_facts"),
+        optional=("cve_id", "hardware_model", "running_config", "feature_facts", "offset"),
     )
     vendor = check_enum(arguments["vendor"], SUPPORTED_VENDORS, "vendor")
     version = check_size(_string(arguments, "version"), MAX_VERSION_BYTES, "version")
@@ -167,6 +170,9 @@ def _read_input(arguments: dict) -> dict:
             raise ToolInputError("malformed_cve_id", field="cve_id")
     check_size(_string(arguments, "hardware_model"), MAX_HARDWARE_MODEL_BYTES, "hardware_model")
     config = check_size(_string(arguments, "running_config"), MAX_CONFIG_BYTES, "running_config")
+    offset = _offset(arguments.get("offset"))
+    if offset and cve_id is not None:
+        raise ToolInputError("invalid_value", "offset applies to list mode only", field="offset")
     facts = arguments.get("feature_facts")
     if facts is not None:
         features, _ = _rules()
@@ -177,7 +183,18 @@ def _read_input(arguments: dict) -> dict:
         "cve_id": cve_id,
         "running_config": config,
         "feature_facts": facts,
+        "offset": offset,
     }
+
+
+def _offset(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ToolInputError(
+            "invalid_value", "offset must be a whole number of 0 or more", field="offset"
+        )
+    return value
 
 
 def _published(text: str) -> str | None:
@@ -581,7 +598,8 @@ def _list(inputs: dict) -> dict:
         findings.append(finding)
     findings.sort(key=_sort_key)
     total = len(findings)
-    returned = findings[:MAX_FINDINGS]
+    offset = inputs["offset"]
+    returned = findings[offset : offset + MAX_FINDINGS]
     ids = sorted({f["advisory"]["id"] for f in returned if _needs_actions(f) and f["advisory"]})
     if ids:
         actions = _actions(ids)
@@ -599,14 +617,19 @@ def _list(inputs: dict) -> dict:
         "checked": len(lookup.cves_seen),
         "total": total,
         "returned": len(rows),
-        "truncated": total > len(rows),
+        "truncated": total > offset + len(rows),
+        "next_offset": offset + len(rows),
         "basis": BASIS,
         "data_version": data_version(corpus=True),
         "findings": rows,
     }
     out = fit(payload, MAX_LIST_BYTES, ("findings",))
     out["returned"] = len(out["findings"])
-    out["truncated"] = total > out["returned"]
+    out["truncated"] = total > offset + out["returned"]
+    if out["truncated"]:
+        out["next_offset"] = offset + out["returned"]
+    else:
+        del out["next_offset"]
     if capped:
         out["limits"]["response_truncated"] = True
     return out
