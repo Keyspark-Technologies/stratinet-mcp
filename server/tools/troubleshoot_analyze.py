@@ -645,8 +645,9 @@ def _current_health(ranked: dict) -> list[str]:
         capability = t.get("capability") or ""
         if signals.shape_of(capability) in (None, LOG_SHAPE) or t.get("layer") != root.get("layer"):
             continue
+        explains = findings._explains()
         if not any(
-            cause in findings._explains().get(sig, frozenset())
+            cause in explains.get(sig, frozenset()) or sig in explains.get(cause, frozenset())
             for sig in findings.fault_signals(capability)
         ):
             continue
