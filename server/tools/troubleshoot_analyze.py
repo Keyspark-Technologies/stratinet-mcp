@@ -143,6 +143,7 @@ IFNAME = re.compile(
 DESCRIPTION_TEXT = re.compile(r"\([^()]*\)")
 TABLE_SHAPE = "interface_table"
 DETAIL_SHAPE = "interface_detail"
+ROW_SHAPES = frozenset({TABLE_SHAPE, "neighbor_table"})
 LOG_WINDOW = re.compile(
     r"\blast\s+(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?)\b", re.I
 )
@@ -443,7 +444,7 @@ def _observations(supplied: list[dict], asked: str | None) -> tuple[list[dict], 
             if asked and shape == LOG_SHAPE and output.strip():
                 output = _scoped(output, asked)
                 item["other_interfaces"] = item.get("other_interfaces") or not output
-            if asked and shape == TABLE_SHAPE and output.strip():
+            if asked and shape in ROW_SHAPES and output.strip():
                 output, missing = _scoped_rows(output, asked)
                 item["other_interfaces"] = item.get("other_interfaces") or missing
             if shape == DETAIL_SHAPE:
