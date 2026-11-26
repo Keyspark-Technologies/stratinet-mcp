@@ -116,6 +116,7 @@ verdict.
 | `unsupported_symptom` | This symptom is not supported by this tool; `supported` lists the symptoms it accepts. |
 | `malformed_cve_id` | The CVE id is not in the form `CVE-YYYY-NNNN`. |
 | `invalid_feature_fact` | A feature fact does not apply to this feature on this vendor. |
+| `version_unparseable` | List mode of `advisory_exposure` only: the version could not be parsed, so there is nothing to sweep. With a `cve_id` the same case is a `cannot_determine` verdict instead. |
 | `internal_error` | The tool could not complete this request, including when it took too long. No detail is returned. |
 | `busy` | Every tool worker is in use. Nothing was run; try the call again shortly. |
 

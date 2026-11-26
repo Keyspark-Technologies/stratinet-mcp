@@ -570,7 +570,7 @@ def _sort_key(finding: dict) -> tuple:
 def _list(inputs: dict) -> dict:
     lookup = advisories_for_version(inputs["vendor"], inputs["version"])
     if not lookup.version_comparable:
-        raise ToolInputError("invalid_value", field="version")
+        raise ToolInputError("version_unparseable", field="version")
     findings = []
     for cve_id in lookup.cves_seen:
         finding = _finding(lookup, cve_id, inputs, None)

@@ -130,8 +130,8 @@ examined for this product), `total` (how many apply), `returned`, `truncated`, `
 `version`, `basis` and `data_version` fields, which appear once at the top.
 
 CVEs cleared by version alone are counted in `checked` but not returned. Findings are ordered by
-severity (critical first), then by CVE id. In list mode a version that cannot be compared is an
-`invalid_value` error on `version`, because there is nothing to sweep.
+severity (critical first), then by CVE id. In list mode a version that cannot be compared is a
+`version_unparseable` error on `version`, because there is nothing to sweep.
 
 ### Size caps
 
@@ -344,7 +344,7 @@ A rejected input returns `isError: true` and a body like:
 
 | Tool | Codes |
 |---|---|
-| `advisory_exposure` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `malformed_cve_id`, `invalid_feature_fact` |
+| `advisory_exposure` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `malformed_cve_id`, `invalid_feature_fact`, `version_unparseable` |
 | `translate_diagnostic` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor` |
 | `troubleshoot_start` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `unsupported_symptom` |
 | `troubleshoot_analyze` | `missing_field`, `unknown_field`, `invalid_value`, `input_too_large`, `unsupported_vendor`, `unsupported_symptom` |
