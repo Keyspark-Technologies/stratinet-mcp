@@ -147,7 +147,14 @@ def _fits(sig: dict, facts: dict) -> bool:
     return False
 
 
-def _binding_record(sig: dict, facts: dict, context: dict | None = None) -> dict | None:
+def _latest_first(facts: dict) -> dict:
+    return {**facts, "records": list(reversed(facts.get("records") or []))}
+
+
+def _binding_record(sig: dict, facts: dict, context: dict | None = None,
+                    latest: bool = False) -> dict | None:
+    if latest:
+        facts = _latest_first(facts)
     records = facts.get("records") or []
     if not records:
         return None
@@ -225,7 +232,9 @@ def _matching(sig: dict, records: list[dict]) -> list[dict] | None:
 
 
 def _evidence_record(sig: dict, facts: dict, context: dict | None = None,
-                     rec: dict | None = None) -> dict | None:
+                     rec: dict | None = None, latest: bool = False) -> dict | None:
+    if latest:
+        facts = _latest_first(facts)
     rec = rec if rec is not None else _binding_record(sig, facts, context)
     matched = _matching(sig, facts.get("records") or [])
     if not matched or any(rec is m for m in matched):
@@ -237,15 +246,16 @@ def evaluate(capability: str, facts: dict, context: dict | None = None) -> dict 
     spec = load_signals().get(capability)
     if not spec:
         return None
+    latest = spec.get("shape") == "log_lines"
     for sig in spec.get("signals") or []:
         if not _fits(sig, facts):
             continue
-        rec = _binding_record(sig, facts, context)
+        rec = _binding_record(sig, facts, context, latest)
         binds = {}
         for field in sig.get("binds") or []:
             if rec and rec.get(field) not in (None, ""):
                 binds[field] = rec[field]
-        cited = _evidence_record(sig, facts, context, rec)
+        cited = _evidence_record(sig, facts, context, rec, latest)
         evidence = ""
         if cited and "field" in sig:
             evidence = next((cited[f"_line_{name}"] for name in sig["field"]

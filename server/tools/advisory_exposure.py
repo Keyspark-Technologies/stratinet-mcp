@@ -27,12 +27,14 @@ BASIS = "deterministic — version-range comparison and hand-written config dete
 DESCRIPTION = (
     "Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor "
     "security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every "
-    "CVE that applies to that version. Optionally add running_config or feature_facts to settle "
+    "CVE that applies to that version. List mode returns at most 25 findings per call, most severe "
+    "first; when the answer carries next_offset, call again with offset set to it to get the next "
+    "page, until next_offset is absent. Optionally add running_config or feature_facts to settle "
     "whether the vulnerable feature is in use. Answers are deterministic and never guess "
     "'not affected': when unsure the answer says what would settle it."
 )
 
-MAX_CONFIG_BYTES = 256 * 1024
+MAX_CONFIG_BYTES = 2 * 1024 * 1024
 MAX_HARDWARE_MODEL_BYTES = 128
 MAX_VERSION_BYTES = 64
 MAX_CVE_ID_BYTES = 64
@@ -54,6 +56,10 @@ CONFIG_LISTING = {
     "fortinet_fortios": "show full-configuration",
 }
 
+SECTIONED_LISTING = frozenset({"fortinet_fortios"})
+
+CONFIG_PATH = re.compile(r"(?i)^config((?:\s+[a-z0-9][a-z0-9_-]*)+)\s+/\s+\S")
+
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 NO_RULE_REASON = "no deterministic exposure rule exists for this CVE"
@@ -70,6 +76,7 @@ SCHEMA = {
             "type": "object",
             "additionalProperties": {"type": "string", "enum": list(pv.FACT_VALUES)},
         },
+        "offset": {"type": "integer", "minimum": 0, "default": 0},
     },
     "required": ["vendor", "version"],
     "additionalProperties": False,
@@ -154,7 +161,7 @@ def _read_input(arguments: dict) -> dict:
     check_fields(
         arguments,
         required=("vendor", "version"),
-        optional=("cve_id", "hardware_model", "running_config", "feature_facts"),
+        optional=("cve_id", "hardware_model", "running_config", "feature_facts", "offset"),
     )
     vendor = check_enum(arguments["vendor"], SUPPORTED_VENDORS, "vendor")
     version = check_size(_string(arguments, "version"), MAX_VERSION_BYTES, "version")
@@ -167,6 +174,9 @@ def _read_input(arguments: dict) -> dict:
             raise ToolInputError("malformed_cve_id", field="cve_id")
     check_size(_string(arguments, "hardware_model"), MAX_HARDWARE_MODEL_BYTES, "hardware_model")
     config = check_size(_string(arguments, "running_config"), MAX_CONFIG_BYTES, "running_config")
+    offset = _offset(arguments.get("offset"))
+    if offset and cve_id is not None:
+        raise ToolInputError("invalid_value", "offset applies to list mode only", field="offset")
     facts = arguments.get("feature_facts")
     if facts is not None:
         features, _ = _rules()
@@ -177,7 +187,18 @@ def _read_input(arguments: dict) -> dict:
         "cve_id": cve_id,
         "running_config": config,
         "feature_facts": facts,
+        "offset": offset,
     }
+
+
+def _offset(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ToolInputError(
+            "invalid_value", "offset must be a whole number of 0 or more", field="offset"
+        )
+    return value
 
 
 def _published(text: str) -> str | None:
@@ -295,6 +316,21 @@ def _decides(spec: dict, key: str) -> dict:
     elif mode == "proof" and (spec.get("absent_when") or {}).get(key):
         out["if_explicitly_disabled"] = pv.NOT_AFFECTED
     return out
+
+
+def _config_path(command: str) -> str | None:
+    match = CONFIG_PATH.match(command.strip())
+    return " ".join(match.group(1).split()) if match else None
+
+
+def _listing(vendor: str, commands: list) -> list:
+    base = CONFIG_LISTING[vendor]
+    if vendor not in SECTIONED_LISTING or not commands:
+        return [base]
+    paths = [_config_path(c) for c in commands]
+    if not all(paths):
+        return [base]
+    return [f"{base} {p}" for p in _union([paths])]
 
 
 def _commands(rows: list) -> list:
@@ -500,7 +536,7 @@ def _derive(lookup, cve_id: str, inputs: dict, actions: dict | None) -> dict:
     )
     rows = (actions or {}).get(match.advisory_id if match else "", {})
     check = _commands(rows.get("verify", []))
-    out["check_commands"] = check or [CONFIG_LISTING[vendor]]
+    out["check_commands"] = check or _listing(vendor, out["vulnerable_commands"])
     out["check_source"] = "advisory" if check else "config_listing"
     out["decides"] = _decides(spec, key)
     if len(rule_features) > 1:
@@ -581,7 +617,8 @@ def _list(inputs: dict) -> dict:
         findings.append(finding)
     findings.sort(key=_sort_key)
     total = len(findings)
-    returned = findings[:MAX_FINDINGS]
+    offset = inputs["offset"]
+    returned = findings[offset : offset + MAX_FINDINGS]
     ids = sorted({f["advisory"]["id"] for f in returned if _needs_actions(f) and f["advisory"]})
     if ids:
         actions = _actions(ids)
@@ -599,14 +636,19 @@ def _list(inputs: dict) -> dict:
         "checked": len(lookup.cves_seen),
         "total": total,
         "returned": len(rows),
-        "truncated": total > len(rows),
+        "truncated": total > offset + len(rows),
+        "next_offset": offset + len(rows),
         "basis": BASIS,
         "data_version": data_version(corpus=True),
         "findings": rows,
     }
     out = fit(payload, MAX_LIST_BYTES, ("findings",))
     out["returned"] = len(out["findings"])
-    out["truncated"] = total > out["returned"]
+    out["truncated"] = total > offset + out["returned"]
+    if out["truncated"]:
+        out["next_offset"] = offset + out["returned"]
+    else:
+        del out["next_offset"]
     if capped:
         out["limits"]["response_truncated"] = True
     return out

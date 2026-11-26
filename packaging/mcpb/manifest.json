@@ -52,7 +52,7 @@
     },
     {
       "name": "advisory_exposure",
-      "description": "Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it."
+      "description": "Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. List mode returns at most 25 findings per call, most severe first; when the answer carries next_offset, call again with offset set to it to get the next page, until next_offset is absent. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it."
     },
     {
       "name": "troubleshoot_analyze",

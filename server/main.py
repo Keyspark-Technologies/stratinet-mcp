@@ -23,7 +23,7 @@ from server.tools import (
 
 logger = logging.getLogger(__name__)
 
-MAX_REQUEST_BODY_BYTES = 1024 * 1024
+MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024
 
 PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
 

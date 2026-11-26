@@ -10,7 +10,7 @@ answers from catalogued data and hand-written rules.
 
 | Tool | What it does |
 |---|---|
-| `advisory_exposure` | Says whether an Arista EOS or Fortinet FortiOS version is exposed to a CVE, or lists every CVE that applies to a version. |
+| `advisory_exposure` | Says whether an Arista EOS or Fortinet FortiOS version is exposed to a CVE, or lists every CVE that applies to a version, 25 per page (page on with `offset` / `next_offset`). |
 | `translate_diagnostic` | Gives the catalogued read-only command for a diagnostic on one or more vendors. |
 | `troubleshoot_start` | Gives the ordered read-only checks to run for a symptom on a device. |
 | `troubleshoot_analyze` | Reads pasted output of those checks and reports a proven cause, the next commands to run, or that nothing is provable yet. |
@@ -99,7 +99,7 @@ HTTP-level errors come back with a JSON body `{"error": {"code": ..., "message":
 | 429 | `rate_limited` | Too many requests for this key. Wait for `Retry-After` seconds. |
 | 503 | `unavailable` | The service could not check the key right now. Try again later. |
 
-The server also refuses request bodies over 1 MB (`413`) and requests that carry a browser
+The server also refuses request bodies over 4 MB (`413`) and requests that carry a browser
 `Origin` header (`403`).
 
 A tool call that is rejected returns a tool result with `isError: true` and an `error` object

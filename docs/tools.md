@@ -44,7 +44,7 @@ the version.
 ### Input
 
 <!-- BEGIN GENERATED: advisory_exposure -->
-> Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it.
+> Says whether an Arista EOS or Fortinet FortiOS software version is exposed to a vendor security advisory. Give vendor and version; add cve_id for one CVE, or omit it to list every CVE that applies to that version. List mode returns at most 25 findings per call, most severe first; when the answer carries next_offset, call again with offset set to it to get the next page, until next_offset is absent. Optionally add running_config or feature_facts to settle whether the vulnerable feature is in use. Answers are deterministic and never guess 'not affected': when unsure the answer says what would settle it.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -54,6 +54,7 @@ the version.
 | `hardware_model` | string | no |  |
 | `running_config` | string | no |  |
 | `feature_facts` | object of strings | no | values: `present`, `absent`, `explicitly_disabled`, `hardened`. |
+| `offset` | integer | no | default `0`. |
 
 <!-- END GENERATED: advisory_exposure -->
 
@@ -64,9 +65,10 @@ Notes on the inputs:
   before use.
 - `hardware_model` (at most 128 bytes) is accepted. The current release does not use it to
   change an answer.
-- `running_config` is at most 256 KB. Use the vendor's full listing — `show running-config` on
-  Arista EOS, `show full-configuration` on FortiOS (plain `show` omits settings left at their
-  default). See [Privacy](../README.md#privacy) for how it is handled.
+- `running_config` is at most 2 MB (2,097,152 bytes of UTF-8), enough for a whole FortiGate
+  `show full-configuration`, which is often around 1 MB. Use the vendor's full listing —
+  `show running-config` on Arista EOS, `show full-configuration` on FortiOS (plain `show` omits
+  settings left at their default). See [Privacy](../README.md#privacy) for how it is handled.
 - `feature_facts` lets you report what a feature looks like instead of sending configuration.
   Keys are feature ids — the `feature` values returned in earlier answers (for example
   `ssl_vpn`). Values:
@@ -110,8 +112,13 @@ Single-CVE answers, and each row of a list answer, carry exactly one of six verd
 example `{"if_present": "vulnerable", "if_absent": "not_affected"}`. A key appears only for an
 outcome the configuration can actually settle; when absence proves nothing, there is no
 `if_absent`. `check_source` is `advisory` when `check_commands` come from the vendor advisory, or
-`config_listing` when the advisory gives no check and the answer points you at the full
-configuration listing instead.
+`config_listing` when the advisory gives no check and the answer points you at the configuration
+listing instead: `show running-config` on Arista EOS, and on FortiOS `show full-configuration`
+narrowed to the configuration section the `vulnerable_commands` name (for example
+`show full-configuration vpn ssl settings` for `config vpn ssl settings / set status enable`).
+When a vulnerable line does not name its section, the FortiOS check is the whole
+`show full-configuration`. `full-configuration` is used because it also prints settings left at
+their default, which plain `show` omits.
 
 Every single-CVE answer also carries `cve_id`, `vendor`, `version`, `advisory{id, url, published,
 severity}` (or `null` when there is no advisory data), `reason` and
@@ -133,13 +140,21 @@ CVEs cleared by version alone are counted in `checked` but not returned. Finding
 severity (critical first), then by CVE id. In list mode a version that cannot be compared is a
 `version_unparseable` error on `version`, because there is nothing to sweep.
 
+A list answer holds one page of at most 25 findings. `offset` (default `0`) skips that many
+findings in the same order, so the pages of one question never overlap or reorder. When more
+findings remain, the answer carries `next_offset`; call again with `offset` set to it, and stop
+when `next_offset` is absent. `total` always counts every finding, `returned` counts this page,
+and `truncated` is `true` while findings remain after this page. An `offset` at or past `total`
+returns an empty page. `offset` is for list mode only: a non-zero `offset` with `cve_id` is an
+`invalid_value` error.
+
 ### Size caps
 
 | | Limit |
 |---|---|
-| `running_config` | 256 KB |
+| `running_config` | 2 MB |
 | Single-CVE answer | 8 KB, at most 5 `evidence` rows |
-| List answer | 64 KB, at most 25 findings |
+| List answer | 64 KB, at most 25 findings per page (page through the rest with `offset`) |
 | `matched_config_snippet` | 240 characters |
 | `vulnerable_commands`, `check_commands`, `hardening_commands` | 8 each, in every answer and finding |
 | `ranges_checked` | 16, those on the version's own release train first |
@@ -309,6 +324,13 @@ is given, a log line that names only other interfaces is not read as evidence ab
 rate is read only over a time since counters were cleared that the output states, never over the
 link's current up time, and only from four or more link status changes. Quoted lines are at most
 400 characters.
+
+When several lines of one log output match the same reading, the line quoted is the most recent
+one (the last in the paste). When the cause is a log line and another output of the same layer
+reads healthy now — for example `show ip ospf neighbor detail` with every neighbour Full beside an
+`OSPF_ADJACENCY_TEARDOWN` line — the status stays `root_cause` and `finding.explanation` adds that
+the current reading shows no fault, quoting that command and line, so the log line is read as an
+earlier or intermittent drop rather than a current outage.
 
 When the counters give no such window, a flap rate is also read from a log output supplied with
 the interface detail whose command states its own window (for example `show logging last 1 hours`):

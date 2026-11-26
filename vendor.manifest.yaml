@@ -30,10 +30,10 @@ files:
     upstream_sha256: 19583df78109d46be5772fcdc17d9b44db69e6b9eaf24b9fd88dc2adb2cf79d7
     local_edit: "SOP path read from server.data_dir(); comments and docstrings removed"
   - dest: engines/triage/signals.py
-    sha256: 4667f2fd402de99f5876edadfd9f68b28d784b739c80ca4e6c2e94509e63be07
+    sha256: 6b2450086ad4fe6882b052688445f401ebadd934c18606c4194fded2b2cde331
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
     upstream_sha256: 0cba7bec829f2d3332c9686af39e52e7afd8a02695d50fc25baa30f65b3c1c41
-    local_edit: "SOP path read from server.data_dir(); comment -- internal device name replaced; comments and docstrings removed; the cited evidence line is always a record that matched the signal, never the first record of the output"
+    local_edit: "SOP path read from server.data_dir(); comment -- internal device name replaced; comments and docstrings removed; the cited evidence line is always a record that matched the signal, never the first record of the output; a log_lines capability binds and cites its most recent matching line, not its oldest"
   - dest: engines/triage/triage.py
     sha256: 77f215c2ccb9128a8cde7cc4266ccdc6c48c0db95a1ae9c65cf20d6255696fc9
     upstream_commit: 6bd7c68ec71ad6bb7ea7b81025f909684a7414bd
