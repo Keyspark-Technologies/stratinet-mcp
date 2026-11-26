@@ -113,6 +113,8 @@ IFNAME_ALIASES = (
     ("gigabitethernet", ("gigabitethernet", "gige", "gig", "gi")),
     ("tengigabitethernet", ("tengigabitethernet", "tengige", "te")),
     ("fastethernet", ("fastethernet", "fa")),
+    ("twogigabitethernet", ("twogigabitethernet", "twogige", "tw")),
+    ("fivegigabitethernet", ("fivegigabitethernet", "fivegige", "fi")),
     ("twentyfivegige", ("twentyfivegigabitethernet", "twentyfivegige", "twe")),
     ("fortygigabitethernet", ("fortygigabitethernet", "fortygige", "fo")),
     ("hundredgigabitethernet", ("hundredgigabitethernet", "hundredgige", "hu")),
