@@ -2,8 +2,8 @@
 
 A public, read-only [Model Context Protocol](https://modelcontextprotocol.io) server that answers
 questions about network devices: is this software version exposed to a security advisory, which
-command checks the same thing on another vendor, and what is wrong with this BGP, OSPF or
-interface problem. You bring the facts — vendor, version, pasted command output — and the server
+command checks the same thing on another vendor, and what is wrong with this OSPF or interface
+problem. You bring the facts — vendor, version, pasted command output — and the server
 answers from catalogued data and hand-written rules.
 
 ## Tools
@@ -49,10 +49,10 @@ The tools cover different vendors:
   advisory data is refreshed regularly, so the same question can get a different answer after an
   update; `data_version` on each answer identifies the data it used, and `checked` in a list
   answer says how many CVEs were examined for that product.
-- **Symptoms.** Troubleshooting is built for three symptoms: `bgp-session-down`,
-  `ospf-neighbor-down` and `interface-degraded`. A symptom is served only once its procedure has
-  been verified; any other symptom is refused with `unsupported_symptom`, whose `supported` list
-  names exactly the symptoms served today.
+- **Symptoms.** Troubleshooting serves only the symptoms whose procedure is marked verified in
+  the server's data bundle. Today that is `interface-degraded` and `ospf-neighbor-down`;
+  `bgp-session-down` is not yet verified and is refused. Any symptom not served is refused with
+  `unsupported_symptom`, whose `supported` list names exactly the symptoms served today.
 - **Command catalogue.** Many diagnostics are catalogued for one vendor only; for those,
   `translate_diagnostic` answers that no equivalent is catalogued (not that none exists).
 - **Hardware validation.** Most catalogued commands have not yet been run on real hardware. Each
