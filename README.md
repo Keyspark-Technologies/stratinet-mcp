@@ -119,6 +119,35 @@ verdict.
 | `internal_error` | The tool could not complete this request, including when it took too long. No detail is returned. |
 | `busy` | Every tool worker is in use. Nothing was run; try the call again shortly. |
 
+## Run it locally with one command
+
+Requirements: Docker with Compose v2, plus the data bundle and corpus dump provided to you. Point
+two variables at them and start the stack:
+
+```sh
+MCP_DATA_DIR=/path/to/data-bundle KB_DUMP=/path/to/corpus-dump.sql.gz MCP_PORT=18800 \
+  docker compose up -d --build --wait
+curl -s http://127.0.0.1:18800/healthz
+```
+
+The MCP endpoint is then `http://127.0.0.1:18800/mcp` (Streamable HTTP), with API keys and rate
+limits off. This starts PostgreSQL and the server. On its first start PostgreSQL loads the dump
+into a new volume, which takes a minute or so; the server waits for it.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MCP_DATA_DIR` | `./data` | Directory holding the data bundle, mounted read-only. |
+| `KB_DUMP` | `./kb-dump.sql.gz` | The corpus dump, plain SQL or gzipped. Loaded once, on first start. |
+| `MCP_PORT` | `8000` | Host port for the server, bound to `127.0.0.1` only. |
+| `LOG_LEVEL` | `INFO` | Server log level. |
+
+You can also put these variables in a `.env` file next to `compose.yaml`.
+
+- Logs: `docker compose logs -f server`.
+- Stop: `docker compose down`. The loaded corpus is kept for the next start.
+- Load a new dump: `docker compose down -v` removes the corpus volume, then start again with the
+  new `KB_DUMP`.
+
 ## Running it yourself / development
 
 Requirements: Python 3.12 and [uv](https://docs.astral.sh/uv/).
