@@ -12,7 +12,7 @@ from common.validate import (
     check_outputs,
     check_size,
 )
-from engines.triage import catalog, findings, select, signals
+from engines.triage import catalog, extract, findings, select, signals
 from engines.triage.extract import (
     ERROR,
     LOG_AGE_UNKNOWN,
@@ -107,6 +107,15 @@ SETTLE_EXHAUSTED = (
     "every check catalogued for this symptom on {vendor} has been read without a reading "
     "that proves a cause, and none can be re-run from the catalogue"
 )
+OUTSIDE_REASON = (
+    "The evidence shows a condition this symptom ({label}) does not cover: {conditions}. No "
+    "cause of this symptom is provable while that holds, and it is not read as health."
+)
+SETTLE_OUTSIDE = (
+    "the reading(s) {signals} in read show a condition outside this symptom, for which no "
+    "verified procedure is served; clear or confirm that condition on the device, then read "
+    "this symptom's checks again"
+)
 
 IFNAME_ALIASES = (
     ("ethernet", ("ethernet", "eth", "et")),
@@ -132,6 +141,18 @@ IFNAME = re.compile(
     re.I,
 )
 DESCRIPTION_TEXT = re.compile(r"\([^()]*\)")
+TABLE_SHAPE = "interface_table"
+DETAIL_SHAPE = "interface_detail"
+LOG_WINDOW = re.compile(
+    r"\blast\s+(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?)\b", re.I
+)
+LOG_UNITS = (("s", 1 / 3600), ("m", 1 / 60), ("h", 1.0), ("d", 24.0))
+DOWN_TRANSITION = "changed state to down"
+MIN_LOG_DOWNS = 2
+LOG_RATE_LINE = (
+    "{count} log line(s) in '{command}' record this interface changing state to down within "
+    "its stated {window} hour(s) -> {rate} flaps/hour"
+)
 
 DESCRIPTION = (
     "Analyze pasted output of read-only troubleshooting commands for one network problem. "
@@ -317,6 +338,13 @@ def _same_interface(name: str, asked: str) -> bool:
     return name == asked or name.split(".")[0] == asked or asked.split(".")[0] == name
 
 
+def _command_key(command: str) -> str:
+    def canonical(match: re.Match) -> str:
+        return _ifnames(match.group(0)).pop()
+
+    return " ".join(IFNAME.sub(canonical, command).lower().split())
+
+
 def _scoped(text: str, asked: str) -> str:
     kept = []
     for line in text.splitlines():
@@ -326,6 +354,83 @@ def _scoped(text: str, asked: str) -> str:
     return "\n".join(kept) + "\n" if kept else ""
 
 
+def _row_port(line: str) -> str | None:
+    first = (line.split() or [""])[0]
+    names = _ifnames(first) if IFNAME.fullmatch(first) else set()
+    return names.pop() if len(names) == 1 else None
+
+
+def _scoped_rows(text: str, asked: str) -> tuple[str, bool]:
+    kept, rows, found = [], 0, False
+    for line in text.splitlines():
+        port = _row_port(line)
+        if port is None:
+            kept.append(line)
+            continue
+        rows += 1
+        if _same_interface(port, asked):
+            kept.append(line)
+            found = True
+    return "\n".join(kept) + "\n", bool(rows) and not found
+
+
+def _log_window_hours(command: str) -> float | None:
+    match = LOG_WINDOW.search(command)
+    if not match:
+        return None
+    count, unit = int(match.group(1)), match.group(2).lower()
+    hours = count * next(scale for prefix, scale in LOG_UNITS if unit.startswith(prefix))
+    return hours if hours > 0 else None
+
+
+def _log_flap_rate(command: str, text: str, port: str) -> dict | None:
+    window = _log_window_hours(command)
+    if window is None:
+        return None
+    downs: dict[str, int] = {}
+    for record in extract.parse_logs(text):
+        age = record.get("age_minutes")
+        if not age or float(age) > window * 60:
+            return None
+        message = record.get("message") or ""
+        if DOWN_TRANSITION not in message.lower():
+            continue
+        if port in _ifnames(DESCRIPTION_TEXT.sub(" ", message)):
+            facility = record.get("facility") or ""
+            downs[facility] = downs.get(facility, 0) + 1
+    count = max(downs.values(), default=0)
+    if count < MIN_LOG_DOWNS:
+        return None
+    rate = f"{count / window:.2f}"
+    return {
+        "flaps_per_hour": rate,
+        "_line_flaps_per_hour": LOG_RATE_LINE.format(
+            count=count, command=command, window=f"{window:g}", rate=rate
+        ),
+    }
+
+
+def _detail_port(command: str, asked: str | None) -> str | None:
+    names = _ifnames(command)
+    if len(names) == 1:
+        return names.pop()
+    return asked if not names else None
+
+
+def _derived(supplied: list[dict], item: dict, port: str | None) -> dict:
+    if not port:
+        return {}
+    for other in supplied:
+        if other["origin"] != item["origin"]:
+            continue
+        if not any(signals.shape_of(c) == LOG_SHAPE for c in other["capabilities"]):
+            continue
+        rate = _log_flap_rate(other["command"], other["output"], port)
+        if rate:
+            return rate
+    return {}
+
+
 def _observations(supplied: list[dict], asked: str | None) -> tuple[list[dict], list[int]]:
     observations, owners = [], []
     order = sorted(range(len(supplied)), key=lambda i: (supplied[i]["origin"] != "local", i))
@@ -333,17 +438,25 @@ def _observations(supplied: list[dict], asked: str | None) -> tuple[list[dict], 
         item = supplied[index]
         for capability in item["capabilities"]:
             output = item["output"]
-            if asked and signals.shape_of(capability) == LOG_SHAPE and output.strip():
+            shape = signals.shape_of(capability)
+            derived = {}
+            if asked and shape == LOG_SHAPE and output.strip():
                 output = _scoped(output, asked)
                 item["other_interfaces"] = item.get("other_interfaces") or not output
-            observations.append(
-                {
-                    "capability": capability,
-                    "command": item["command"],
-                    "output": output,
-                    "origin": item["origin"],
-                }
-            )
+            if asked and shape == TABLE_SHAPE and output.strip():
+                output, missing = _scoped_rows(output, asked)
+                item["other_interfaces"] = item.get("other_interfaces") or missing
+            if shape == DETAIL_SHAPE:
+                derived = _derived(supplied, item, _detail_port(item["command"], asked))
+            observation = {
+                "capability": capability,
+                "command": item["command"],
+                "output": output,
+                "origin": item["origin"],
+            }
+            if derived:
+                observation["derived"] = derived
+            observations.append(observation)
             owners.append(index)
     return observations, owners
 
@@ -423,6 +536,7 @@ def _need(
     unread: set[str],
     other: set[str],
     healthy: set[str],
+    spelled: dict[str, str],
     prefer: frozenset[str],
 ) -> list[dict]:
     rows: list[dict] = []
@@ -432,8 +546,10 @@ def _need(
 
     def add(rendered: tuple[str | None, list[dict]], why: str) -> None:
         command, placeholders = rendered
-        if command and command not in seen and len(rows) < MAX_NEED:
-            seen.add(command)
+        key = _command_key(command) if command else ""
+        command = spelled.get(key, command)
+        if command and key not in seen and len(rows) < MAX_NEED:
+            seen.add(key)
             row = {"command": command, "why": why}
             if placeholders:
                 row["placeholders"] = placeholders
@@ -481,6 +597,25 @@ def _settle(
     if empty:
         settle.append(SETTLE_EMPTY.format(count=empty))
     return settle or [SETTLE_EXHAUSTED.format(vendor=vendor)]
+
+
+def _outside(trail: list[dict], issue: str) -> list[dict]:
+    return [
+        t
+        for t in trail
+        if t.get("signal")
+        and not findings.is_fault(t["signal"])
+        and _signal_means(t["signal"])
+        and issue not in select.issues_excluding(t["signal"])
+    ]
+
+
+def _outside_reason(outside: list[dict], issue: str) -> str:
+    label = (_issues().get(issue) or {}).get("issue", {}).get("label") or issue
+    shown = {}
+    for t in outside:
+        shown.setdefault(t["signal"], f"{_signal_means(t['signal'])} ({t['signal']})")
+    return OUTSIDE_REASON.format(label=label, conditions="; ".join(shown.values()))
 
 
 def _explanation(cause: str, means: str, root: dict, vendor: str, explained: int) -> str:
@@ -597,8 +732,11 @@ def troubleshoot_analyze(arguments: dict[str, Any]) -> dict[str, Any]:
             unread_rows.append({"command": item["command"], "why": why})
     ran = {t["capability"] for t in trail}
     faulted = {t["capability"] for t in trail if findings.is_fault(t.get("signal"))}
+    outside = _outside(trail, issue)
     healthy = {t["capability"] for t in trail if t.get("signal")} - faulted
-    known = (result, issue, vendor, cat, ran, unread_caps, other_caps, healthy)
+    healthy -= {t["capability"] for t in outside}
+    spelled = {_command_key(item["command"]): item["command"] for item in supplied}
+    known = (result, issue, vendor, cat, ran, unread_caps, other_caps, healthy, spelled)
 
     ranked = findings.rank(trail)
     root = ranked["root_cause"]
@@ -621,12 +759,15 @@ def troubleshoot_analyze(arguments: dict[str, Any]) -> dict[str, Any]:
         answer["need"] = _need(*known, frozenset())
     else:
         answer = {"status": "cannot_determine", "vendor": vendor, "symptom": issue}
-        answer["reason"] = NOTHING_PROVABLE
+        answer["reason"] = _outside_reason(outside, issue) if outside else NOTHING_PROVABLE
         answer["need"] = _need(*known, frozenset())
     if answer["status"] != "root_cause" and not answer["need"]:
-        answer["what_would_settle_it"] = _settle(
-            issue, vendor, cat, ran, len(unread_rows) - empty, empty
-        )
+        settle = _settle(issue, vendor, cat, ran, len(unread_rows) - empty, empty)
+        if outside:
+            exhausted = SETTLE_EXHAUSTED.format(vendor=vendor)
+            names = ", ".join(dict.fromkeys(t["signal"] for t in outside))
+            settle = [SETTLE_OUTSIDE.format(signals=names)] + [s for s in settle if s != exhausted]
+        answer["what_would_settle_it"] = settle
 
     answer["read"] = read_rows
     answer["unread"] = unread_rows

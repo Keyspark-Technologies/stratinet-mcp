@@ -183,6 +183,8 @@ async def triage(session, req: dict, *, deterministic: bool = True) -> dict:
         origin = (obs.get("origin") or "local").strip().lower()
         for r in facts["records"]:
             r["_origin"] = origin
+            for k, v in (obs.get("derived") or {}).items():
+                r.setdefault(k, v)
         if origin == "local":
             local_records[cap] = list(facts["records"])
         else:

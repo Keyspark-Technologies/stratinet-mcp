@@ -310,6 +310,19 @@ rate is read only over a time since counters were cleared that the output states
 link's current up time, and only from four or more link status changes. Quoted lines are at most
 400 characters.
 
+When the counters give no such window, a flap rate is also read from a log output supplied with
+the interface detail whose command states its own window (for example `show logging last 1 hours`):
+the lines that record that interface changing state to down are counted over that window, from
+two or more of them, and only when every line of the paste falls inside it. An OSPF neighbour's
+state changes are never turned into a rate, because the time since the adjacency was established
+is not the window they accumulated over. The quoted line is always one that matched the reading,
+and when `context.interface` is given, a status table is read from that interface's row only.
+When the output shows a condition this symptom does not cover, such as a link that is down or
+administratively shut down while the symptom is a degraded link that is up, `reason` names that
+condition instead of saying nothing was found, and the output is not asked for again as if it
+had shown no fault. A next command that differs from a supplied one only in how the interface is
+abbreviated is not asked for.
+
 Caps: 8 outputs, 64 KB each, 256 KB in total; answer at most 16 KB. When the answer must be
 shortened, `read` rows go first, then `also_found`, then `symptoms`; the verdict, the evidence line
 and `need` are never dropped.

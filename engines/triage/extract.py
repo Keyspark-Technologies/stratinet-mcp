@@ -723,7 +723,7 @@ def _cleared_hours(text: str) -> tuple[float, str] | None:
 
 def _read_interface_detail(text: str) -> dict | None:
     first = next((l for l in text.splitlines() if l.strip()), "")
-    m = re.match(r"^(\S+) is (\S+), line protocol is (\S+)", first)
+    m = re.match(r"^(\S+) is (\S+(?: down)?), line protocol is (\S+)", first)
     if not m:
         return None
     port, admin_raw, oper_raw = m.group(1), m.group(2), m.group(3)
@@ -934,21 +934,6 @@ def _read_fos_routes(text: str) -> dict | None:
             "evidence": out[0]["_line"][:200]}
 
 
-_AGE = (
-    (re.compile(r"^(\d+)w(\d+)d$"),            lambda m: int(m[1])*168 + int(m[2])*24),
-    (re.compile(r"^(\d+)d(\d+)h$"),            lambda m: int(m[1])*24 + int(m[2])),
-    (re.compile(r"^(\d+):(\d+):(\d+)$"),      lambda m: int(m[1]) + int(m[2])/60 + int(m[3])/3600),
-)
-
-
-def _age_hours(text: str) -> float | None:
-    for pat, fn in _AGE:
-        m = pat.match(text.strip())
-        if m:
-            return fn(m)
-    return None
-
-
 def _read_peer_detail(text: str) -> dict | None:
     blocks = re.split(r"^Neighbor\s+", text, flags=re.M)[1:]
     out: list[dict] = []
@@ -973,9 +958,6 @@ def _read_peer_detail(text: str) -> dict | None:
             rec["retransmits"] = m.group(1)
         if (m := re.search(r"Adjacency was established (\S+) ago", b)):
             rec["uptime"] = m.group(1)
-            hours = _age_hours(m.group(1))
-            if hours and hours > 0:
-                rec["changes_per_hour"] = f"{int(st.group(2)) / hours:.3f}"
         out.append(rec)
     if not out:
         return None
