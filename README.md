@@ -99,7 +99,7 @@ HTTP-level errors come back with a JSON body `{"error": {"code": ..., "message":
 | 429 | `rate_limited` | Too many requests for this key. Wait for `Retry-After` seconds. |
 | 503 | `unavailable` | The service could not check the key right now. Try again later. |
 
-The server also refuses request bodies over 1 MB (`413`) and requests that carry a browser
+The server also refuses request bodies over 4 MB (`413`) and requests that carry a browser
 `Origin` header (`403`).
 
 A tool call that is rejected returns a tool result with `isError: true` and an `error` object

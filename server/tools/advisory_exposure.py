@@ -34,7 +34,7 @@ DESCRIPTION = (
     "'not affected': when unsure the answer says what would settle it."
 )
 
-MAX_CONFIG_BYTES = 256 * 1024
+MAX_CONFIG_BYTES = 2 * 1024 * 1024
 MAX_HARDWARE_MODEL_BYTES = 128
 MAX_VERSION_BYTES = 64
 MAX_CVE_ID_BYTES = 64

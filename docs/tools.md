@@ -65,9 +65,10 @@ Notes on the inputs:
   before use.
 - `hardware_model` (at most 128 bytes) is accepted. The current release does not use it to
   change an answer.
-- `running_config` is at most 256 KB. Use the vendor's full listing — `show running-config` on
-  Arista EOS, `show full-configuration` on FortiOS (plain `show` omits settings left at their
-  default). See [Privacy](../README.md#privacy) for how it is handled.
+- `running_config` is at most 2 MB (2,097,152 bytes of UTF-8), enough for a whole FortiGate
+  `show full-configuration`, which is often around 1 MB. Use the vendor's full listing —
+  `show running-config` on Arista EOS, `show full-configuration` on FortiOS (plain `show` omits
+  settings left at their default). See [Privacy](../README.md#privacy) for how it is handled.
 - `feature_facts` lets you report what a feature looks like instead of sending configuration.
   Keys are feature ids — the `feature` values returned in earlier answers (for example
   `ssl_vpn`). Values:
@@ -146,7 +147,7 @@ returns an empty page. `offset` is for list mode only: a non-zero `offset` with 
 
 | | Limit |
 |---|---|
-| `running_config` | 256 KB |
+| `running_config` | 2 MB |
 | Single-CVE answer | 8 KB, at most 5 `evidence` rows |
 | List answer | 64 KB, at most 25 findings per page (page through the rest with `offset`) |
 | `matched_config_snippet` | 240 characters |
