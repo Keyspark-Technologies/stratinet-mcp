@@ -40,7 +40,7 @@ def server_version() -> str:
 
 def build_server(settings: Settings) -> StratinetServer:
     mcp = StratinetServer(
-        "mcp-server",
+        "stratinet-mcp",
         version=server_version(),
         log_level=settings.log_level,
         tool_timeout_seconds=settings.tool_timeout_seconds,
