@@ -209,6 +209,30 @@ def _binding_record(sig: dict, facts: dict, context: dict | None = None) -> dict
     return _prefer(records)
 
 
+def _matching(sig: dict, records: list[dict]) -> list[dict] | None:
+    for form in ("any", "all"):
+        if form in sig:
+            f, v = next(iter(sig[form].items()))
+            return [r for r in records if _match(r, f, v)]
+    if "contains" in sig:
+        f, want = next(iter(sig["contains"].items()))
+        needle = str(want).strip().lower()
+        return [r for r in records if needle in str(r.get(f) or "").lower()]
+    if "field" in sig:
+        return [r for r in records
+                if _fits({"field": sig["field"]}, {"records": [r], "status": "ok"})]
+    return None
+
+
+def _evidence_record(sig: dict, facts: dict, context: dict | None = None,
+                     rec: dict | None = None) -> dict | None:
+    rec = rec if rec is not None else _binding_record(sig, facts, context)
+    matched = _matching(sig, facts.get("records") or [])
+    if not matched or any(rec is m for m in matched):
+        return rec
+    return matched[0]
+
+
 def evaluate(capability: str, facts: dict, context: dict | None = None) -> dict | None:
     spec = load_signals().get(capability)
     if not spec:
@@ -221,11 +245,12 @@ def evaluate(capability: str, facts: dict, context: dict | None = None) -> dict 
         for field in sig.get("binds") or []:
             if rec and rec.get(field) not in (None, ""):
                 binds[field] = rec[field]
+        cited = _evidence_record(sig, facts, context, rec)
         evidence = ""
-        if rec and "field" in sig:
-            evidence = next((rec[f"_line_{name}"] for name in sig["field"]
-                             if rec.get(f"_line_{name}")), "")
-        evidence = evidence or (rec or {}).get("_line") or facts.get("evidence") or ""
+        if cited and "field" in sig:
+            evidence = next((cited[f"_line_{name}"] for name in sig["field"]
+                             if cited.get(f"_line_{name}")), "")
+        evidence = evidence or (cited or {}).get("_line") or facts.get("evidence") or ""
         return {"signal": sig["name"],
                 "evidence": evidence,
                 "binds": binds,
