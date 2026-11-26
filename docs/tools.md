@@ -325,6 +325,13 @@ rate is read only over a time since counters were cleared that the output states
 link's current up time, and only from four or more link status changes. Quoted lines are at most
 400 characters.
 
+When several lines of one log output match the same reading, the line quoted is the most recent
+one (the last in the paste). When the cause is a log line and another output of the same layer
+reads healthy now — for example `show ip ospf neighbor detail` with every neighbour Full beside an
+`OSPF_ADJACENCY_TEARDOWN` line — the status stays `root_cause` and `finding.explanation` adds that
+the current reading shows no fault, quoting that command and line, so the log line is read as an
+earlier or intermittent drop rather than a current outage.
+
 When the counters give no such window, a flap rate is also read from a log output supplied with
 the interface detail whose command states its own window (for example `show logging last 1 hours`):
 the lines that record that interface changing state to down are counted over that window, from

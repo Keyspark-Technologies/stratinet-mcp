@@ -111,6 +111,11 @@ OUTSIDE_REASON = (
     "The evidence shows a condition this symptom ({label}) does not cover: {conditions}. No "
     "cause of this symptom is provable while that holds, and it is not read as health."
 )
+CURRENTLY_HEALTHY = (
+    "Current state: '{command}' ({capability}) reads as {signal}, not a fault: '{line}'. The log "
+    "line records a past event, so it explains an earlier or intermittent drop; that reading shows "
+    "no fault now."
+)
 SETTLE_OUTSIDE = (
     "the reading(s) {signals} in read show a condition outside this symptom, for which no "
     "verified procedure is served; clear or confirm that condition on the device, then read "
@@ -630,14 +635,45 @@ def _explanation(cause: str, means: str, root: dict, vendor: str, explained: int
     return " ".join(parts)
 
 
+def _current_health(ranked: dict) -> list[str]:
+    root = ranked["root_cause"]
+    if signals.shape_of(root.get("capability") or "") != LOG_SHAPE:
+        return []
+    cause = root["signal"]
+    notes: dict[str, str] = {}
+    for t in ranked.get("health") or []:
+        capability = t.get("capability") or ""
+        if signals.shape_of(capability) in (None, LOG_SHAPE) or t.get("layer") != root.get("layer"):
+            continue
+        if not any(
+            cause in findings._explains().get(sig, frozenset())
+            for sig in findings.fault_signals(capability)
+        ):
+            continue
+        notes.setdefault(
+            t.get("command") or capability,
+            CURRENTLY_HEALTHY.format(
+                command=t.get("command"),
+                capability=capability,
+                signal=t["signal"],
+                line=t.get("evidence") or "",
+            ),
+        )
+    return list(notes.values())
+
+
 def _finding(ranked: dict, vendor: str, basis: str, include_remediation: bool) -> dict:
     root = ranked["root_cause"]
     cause = root["signal"]
     means = _signal_means(cause)
+    explanation = _explanation(cause, means, root, vendor, len(ranked["symptoms"]))
+    current = _current_health(ranked)
+    if current:
+        explanation = " ".join([explanation.rstrip(".") + ".", *current])
     finding = {
         "cause": cause,
         "means": means,
-        "explanation": _explanation(cause, means, root, vendor, len(ranked["symptoms"])),
+        "explanation": explanation,
         "evidence": {"command": root.get("command"), "line": root.get("evidence") or ""},
         "symptoms": [
             {"cause": t["signal"], "line": t.get("evidence") or ""} for t in ranked["symptoms"]
