@@ -85,6 +85,8 @@ class Catalog:
     def capabilities_for(self, vendor: str, command: str) -> tuple[str, ...]:
         form = normalise(command)
         found = set(self._exact.get((vendor, form), ()))
+        if found:
+            return tuple(sorted(found, key=self._rank))
         words = form.split()
         for pattern, capability in self._templates.get(vendor, ()):
             if len(pattern) == len(words) and all(
